@@ -118,7 +118,7 @@ def process_trees(input_files, output_files, tree_name, hist_configs, year, sele
 
             # Define event classification for the dedicated mode
             if eventClassification:
-                from weights_and_constants import adhoc_selection, adhoc_binning
+                from configs.weights_and_constants import adhoc_selection, adhoc_binning
                 adhoc_selection = adhoc_selection.copy()
                 adhoc_binning = adhoc_binning.copy()
 

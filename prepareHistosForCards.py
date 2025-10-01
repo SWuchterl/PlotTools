@@ -102,7 +102,7 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
             # If weight is a complex expression, define it as a new column
             weight_column = f"weight_{syst}"
             if "data" not in infile and "Data" not in infile:
-                print(f"Event weight: {Fore.GREEN}{weight}{Style.RESET_ALL}")
+                #print(f"Event weight: {Fore.GREEN}{weight}{Style.RESET_ALL}")
                 df_selected = df_selected.Define(weight_column, weight)
             else: # Keep the weight == 1 for collision data
                 df_selected = df_selected.Define(weight_column, "1")
@@ -270,7 +270,7 @@ if __name__ == "__main__":
                  "ttLF" : "tt_category==0 && higgs_decay==0 && wcb==0"
     }
 
-    from weights_and_constants import adhoc_selection, adhoc_binning
+    from configs.weights_and_constants import adhoc_selection, adhoc_binning
     adhoc_selection = adhoc_selection.copy()
     adhoc_binning = adhoc_binning.copy()
     

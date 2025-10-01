@@ -1,11 +1,11 @@
 #!/bin/sh
 
 # Unstacked scores for signal, ttLF, total background
-#python3 plotUnstacked.py --input_dir histos_07072025/scores_ttLFm0p1/ --input_csv hconfig_scores.csv --output_dir test/ --process ttLF --log
-#python3 plotUnstacked.py --input_dir histos_07072025/scores_ttLFm0p1/ --input_csv hconfig_scores.csv --output_dir test/ --process ttbb --log
-#python3 plotUnstacked.py --input_dir histos_07072025/scores_ttLFm0p1/ --input_csv hconfig_scores.csv --output_dir test/ --process ttbj --log
-#python3 plotUnstacked.py --input_dir histos_07072025/scores_ttLFm0p1/ --input_csv hconfig_scores.csv --output_dir test/ --process ttcc --log
-#python3 plotUnstacked.py --input_dir histos_07072025/scores_ttLFm0p1/ --input_csv hconfig_scores.csv --output_dir test/ --process ttcj --log
+#python3 plotUnstacked.py --input_dir histos_07072025/scores_ttLFm0p1/ --input_csv configs/hconfig_scores.csv --output_dir test/ --process ttLF --log
+#python3 plotUnstacked.py --input_dir histos_07072025/scores_ttLFm0p1/ --input_csv configs/hconfig_scores.csv --output_dir test/ --process ttbb --log
+#python3 plotUnstacked.py --input_dir histos_07072025/scores_ttLFm0p1/ --input_csv configs/hconfig_scores.csv --output_dir test/ --process ttbj --log
+#python3 plotUnstacked.py --input_dir histos_07072025/scores_ttLFm0p1/ --input_csv configs/hconfig_scores.csv --output_dir test/ --process ttcc --log
+#python3 plotUnstacked.py --input_dir histos_07072025/scores_ttLFm0p1/ --input_csv configs/hconfig_scores.csv --output_dir test/ --process ttcj --log
 
 # Purity/evt number plots for CRs and SR
 python3 plotUnstacked.py --input_dir histos_07072025/ttLFm0p1/ --output_dir purity_plots/ttLFm0p1/CRSR/ --purity --multiRegion
