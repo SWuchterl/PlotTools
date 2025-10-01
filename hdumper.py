@@ -179,6 +179,9 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
 
 
 def process_trees_parallel(input_files, output_files, tree_name, hist_configs, year, selections, eventClassification, use5FS):
+    """
+    Basically a wrapper of process_tree to process multiple TTrees in parallel.
+    """
 
     process_func = partial(
         process_tree,

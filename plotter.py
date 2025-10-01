@@ -39,7 +39,7 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
     # Open input files and retrieve histograms
     for infile in input_files:
         
-        if sonly and "Wcb" not in infile:
+        if sonly and "vcb" not in infile:
             continue
 
         print(f"Reading file: {infile}")
@@ -63,7 +63,7 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
         x_high = hist_clone.GetBinLowEdge(hist_clone.GetNbinsX() + 1)
 
         # Treat the signal sample separately (it will be added also as a dashed line to the plots)
-        if "Wcb" in infile:
+        if "vcb" in infile:
             print(f"W->cb x {sig_norm} histogram will be also added to the plot separately")
             sig_hist = hist.Clone()
             sig_hist.SetDirectory(0)
@@ -83,7 +83,7 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
         root_file.Close()
 
     # Save the stack in a canvas and add a legend
-    print(f"Saving stacked histograms as: {output_dir}{hist_name.replace('h_','')}.pdf")
+    print(f"Saving stacked histograms as: {output_dir}{hist_name.replace('h_','')}.pdf/.png")
     canvas = CMS.cmsDiCanvas('canvas', x_low, x_high, 0, 1, 0.7, 1.3, hist_name.replace('h_',''), 'Events', 'Data/MC', square = CMS.kSquare, extraSpace=0.01, iPos=11)
     canvas.cd(1)
     legend = CMS.cmsLeg(0.65,0.4,0.85,0.87, textSize=0.04) # Needs to be defined after the cmsCanvas or it won't be plotted
@@ -141,7 +141,8 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
 
     # Save the canvas in pdf and png formats
     plot_name = f"{output_dir}{hist_name.replace('h_','')}" if not log else f"{output_dir}/log/{hist_name.replace('h_','')}"
-    CMS.SaveCanvas(canvas,f"{plot_name}.png") # The False is needed not to close the canvas
+    CMS.SaveCanvas(canvas,f"{plot_name}.png", False) # The False is needed not to close the canvas
+    CMS.SaveCanvas(canvas,f"{plot_name}.pdf", False)
     print()
 
 def create_output_dir(output_dir, log):
