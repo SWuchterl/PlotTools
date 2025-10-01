@@ -73,7 +73,9 @@ else:
 
 # PDF/Scale uncertainties on xsec
 if year == '2018':
-    cb.cp().AddSyst(cb, 'CMS_lumi_13TeV_2018', 'lnN', ch.SystMap()(1.015))
+    cb.cp().AddSyst(cb, 'CMS_lumi_13TeV_2018', 'lnN', ch.SystMap()(1.015)),
+    #cb.cp().AddSyst(cb, 'CMS_trigEff%s', 'lnN', ch.SystMap()(1.015)),
+
 #cb.cp().process(['wjets']).AddSyst(cb, 'QCDscale_V', 'lnN', ch.SystMap()(1.038))
 #cb.cp().process(['singletop']).AddSyst(cb, 'QCDscale_singletop', 'lnN', ch.SystMap()((1.031, 1 - 0.021)))
 #cb.cp().process(tt_components).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.024, 1 - 0.035)))
@@ -114,6 +116,55 @@ print("Output file name: " + outputShapesName)
 
 shapeSysts = {
     'CMS_pileup_%s' % year: all_procs,
+    'CMS_flavTag_PS_isr_ttbar_%s' % year: tt_components,
+    'CMS_flavTag_PS_fsr_ttbar_%s' % year: tt_components,
+    'CMS_flavTag_PS_isr_wjets_%s' % year: ['wjets'],
+    'CMS_flavTag_PS_fsr_wjets_%s' % year: ['wjets'],
+    'CMS_flavTag_xsec_wjets_c_%s' % year: ['wjets'],
+    'CMS_flavTag_xsec_wjets_b_%s' % year: ['wjets'],
+    'CMS_flavTag_JER%s' % year: all_procs,
+    'CMS_flavTag_JES%s' % year: all_procs,
+    'CMS_flavTag_PU_%s' % year: all_procs,
+    'CMS_flavTag_stat_%s' % year: all_procs,
+    'CMS_flavTag_LHE_muF_ttbar_%s' % year: tt_components,
+    'CMS_flavTag_LHE_muR_ttbar_%s' % year: tt_components,
+    'CMS_flavTag_LHE_muF_wjets_%s' % year: ['wjets'],
+    'CMS_flavTag_LHE_muR_wjets_%s' % year: ['wjets'],
+    'CMS_flavTag_Stat_flavB_C0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_C1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_C2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_C3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_C4_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_B0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_B1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_B2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_B3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_B4_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_C0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_C1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_C2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_C3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_C4_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_B0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_B1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_B2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_B3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_B4_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_C0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_C1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_C2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_C3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_C4_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_B0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_B1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_B2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_B3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_B4_%s' % year: all_procs,
+    'CMS_trigEff%s' % year: all_procs,
+    'CMS_muEff%s' % year: all_procs,
+    'CMS_elEff%s' % year: all_procs,
+    'CMS_topHdampWeight%s' % year: tt_components,
+   
     # 'CMS_ttHcc_puJetId_%s' % year: all_procs,
     # 'CMS_ttHcc_topptWeight': ['ttbar'],
     # 'CMS_ttHcc_zptEWKWeight': ['zjets'],
@@ -134,9 +185,6 @@ shapeSysts = {
     #'$PROCESS_CMS_PS_fsr_%s' % year: tt_components + ttH_modes + list(signal.keys()),
     #'$PROCESS_CMS_LHE_weights_scale_muF_%s' % year: tt_components + ttH_modes + list(signal.keys()),
     #'$PROCESS_CMS_LHE_weights_scale_muR_%s' % year: tt_components + ttH_modes + list(signal.keys()),
-
-    'CMS_JER%s' % year : all_procs,
-    'CMS_JES%s' % year : all_procs,
 }
 
 for syst in shapeSysts:

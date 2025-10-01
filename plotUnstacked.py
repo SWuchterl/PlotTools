@@ -331,10 +331,14 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
             # Clone the histogram to avoid issues when the file is closed
             hist_clone = hist.Clone()
             hist_clone.SetDirectory(0)
-
-            if proc_name in infile:
+            print("")
+            print("PROC NAME", proc_name)
+            if proc_name in infile.split('h_')[-1]:
                 process[hist_name][0] += hist_clone.Integral() 
+                print(f"Integral of {hist_name} in {infile}: {hist_clone.Integral()}")
             process[hist_name][1] += hist_clone.Integral()
+            print(f"Total integral of {hist_name}: {process[hist_name][1]}")
+        
 
     labels_CR = [key for key in process.keys() if ('CR' in key) and ('fscore' not in key)]
     labels_fscores = [key for key in process.keys() if 'fscore' in key or "Wcb_CR" in key]

@@ -17,7 +17,7 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
     - sonly: Decide whether to plot only the signal.
     - sig_norm: Normalization of the signal.
     - log: Use log scale on the Y-axis.
-    - blind: Decide whether to blind the data in (b,c) invariant mass histogram.
+    - blind: Decide whether to blind the data in the ttWcb score histogram.
     """
     # Create a THStack and a dictionary {process name : histogram} to feed to the CMS plotting
     stack = ROOT.THStack("stack", f"Stack of {hist_name}")
@@ -34,7 +34,7 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
         print(f"Plotting only the signal")
 
     # Decide whether to blind the data in the invariant mass histogram
-    isBlind = True if (hist_name == "h_mass_minDR_bc" and blind) else False
+    isBlind = True if (hist_name == "h_score_tt_Wcb" and blind) else False
 
     # Open input files and retrieve histograms
     for infile in input_files:
@@ -100,14 +100,14 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
 
     # Set Y-axis range based on maximum value of stacked histograms
     hist_from_canvas = CMS.GetcmsCanvasHist(canvas.GetPad(1))
-    hist_from_canvas.GetYaxis().SetRangeUser(0.01,max(stack.GetHistogram().GetMaximum(),data_hist.GetMaximum()) * 1.2)
+    hist_from_canvas.GetYaxis().SetRangeUser(0.01,max(stack.GetHistogram().GetMaximum(),data_hist.GetMaximum()) * 2.0)
     if sonly:
         hist_from_canvas.GetYaxis().SetRangeUser(0.01,sig_hist.GetMaximum() * 1.2)
     hist_from_canvas.GetYaxis().SetMaxDigits(3) # Force scientific notation above 3 digits on the Y-axis
     #Draw the stack in log scale
     if log: 
         ROOT.gPad.SetLogy()
-        hist_from_canvas.GetYaxis().SetRangeUser(0.0001,max(stack.GetHistogram().GetMaximum(),data_hist.GetMaximum()) * 10000)
+        hist_from_canvas.GetYaxis().SetRangeUser(0.01,max(stack.GetHistogram().GetMaximum(),data_hist.GetMaximum()) * 10000)
         if sonly:
             hist_from_canvas.GetYaxis().SetRangeUser(0.01,sig_hist.GetMaximum() * 1000)
 
@@ -141,7 +141,7 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
 
     # Save the canvas in pdf and png formats
     plot_name = f"{output_dir}{hist_name.replace('h_','')}" if not log else f"{output_dir}/log/{hist_name.replace('h_','')}"
-    CMS.SaveCanvas(canvas,f"{plot_name}.pdf") # The False is needed not to close the canvas
+    CMS.SaveCanvas(canvas,f"{plot_name}.png") # The False is needed not to close the canvas
     print()
 
 def create_output_dir(output_dir, log):
@@ -180,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("--sonly", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to plot only the signal.")
     parser.add_argument("--sig_norm", nargs="?", const=1, type=int, default=1, required=False, help="Signal normalization.")
     parser.add_argument("--log", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to use log scale on the Y-axis.")
-    parser.add_argument("--blind", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to blind the data in invarian mass histogram.")
+    parser.add_argument("--blind", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to blind the data in a certain histogram.")
 
     args = parser.parse_args()
 

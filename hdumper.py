@@ -47,11 +47,12 @@ def process_trees(input_files, output_files, tree_name, hist_configs, year, sele
         if eventClassification:
             print(f"{Fore.YELLOW}Running in event classification mode. Will define a series of fractional scores.{Style.RESET_ALL}")
             # Define the fractional scores
-            df = df.Define("fscore_ttbb", "score_ttbb / (score_ttbb + score_ttbj + score_ttcc + score_ttcj + score_ttLF)") \
-                .Define("fscore_ttbj", "score_ttbj / (score_ttbb + score_ttbj + score_ttcc + score_ttcj + score_ttLF)") \
-                .Define("fscore_ttcc", "score_ttcc / (score_ttbb + score_ttbj + score_ttcc + score_ttcj + score_ttLF)") \
-                .Define("fscore_ttcj", "score_ttcj / (score_ttbb + score_ttbj + score_ttcc + score_ttcj + score_ttLF)") \
-                .Define("fscore_ttLF", "score_ttLF / (score_ttbb + score_ttbj + score_ttcc + score_ttcj + score_ttLF)")
+            df = df.Define("denominator", "score_ttbb + score_ttbj + score_ttcc + score_ttcj + score_ttLF") \
+                .Define("fscore_ttbb", "score_ttbb / denominator") \
+                .Define("fscore_ttbj", "score_ttbj / denominator") \
+                .Define("fscore_ttcc", "score_ttcc / denominator") \
+                .Define("fscore_ttcj", "score_ttcj / denominator") \
+                .Define("fscore_ttLF", "score_ttLF / denominator")
         else:
             df = df.Define("ak4_1_pt", "ak4_pt.size() > 0 ? ak4_pt[0] : 0") \
                 .Define("ak4_1_phi",   "ak4_phi.size() > 0 ? ak4_phi[0] : 0") \
@@ -266,11 +267,6 @@ if __name__ == "__main__":
                  "ttcj" : " && (genEventClassifier==4 || genEventClassifier==5) && wcb==0",
                  "ttLF" : " && tt_category==0 && higgs_decay==0 && wcb==0"
     }
-
-    # These weights correspond (roughly) to the fraction of events of a certain process expected in the corresponding category after the ttWcb and ttLF score selection.
-    #from weights_and_constants import weights_and_constants
-    #wc = weights_and_constants()
-    #evtClassification_weights = wc.weights_0p6ttWcb_and_0p1ttLF
 
     # Apply trigger selection to separate channels if requested
     if args.electron:
