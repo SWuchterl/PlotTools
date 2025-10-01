@@ -47,10 +47,12 @@ def process_trees(input_files, output_files, tree_name, hist_configs, year, sele
         if eventClassification:
             print(f"{Fore.YELLOW}Running in event classification mode. Will define a series of fractional scores.{Style.RESET_ALL}")
             # Define the fractional scores
-            df = df.Define("denominator", "score_ttbb + score_ttbj + score_ttcc + score_ttcj + score_ttLF") \
+            df = df.Define("denominator", "score_ttbb + score_tt2b + score_ttbj + score_ttcc + score_tt2c + score_ttcj + score_ttLF") \
                 .Define("fscore_ttbb", "score_ttbb / denominator") \
+                .Define("fscore_tt2b", "score_tt2b / denominator") \
                 .Define("fscore_ttbj", "score_ttbj / denominator") \
                 .Define("fscore_ttcc", "score_ttcc / denominator") \
+                .Define("fscore_tt2c", "score_tt2c / denominator") \
                 .Define("fscore_ttcj", "score_ttcj / denominator") \
                 .Define("fscore_ttLF", "score_ttLF / denominator")
         else:
@@ -179,7 +181,7 @@ def assign_event_weight(year, infile):
     - infile: Input file.
     """
     weight = "1"
-    if year == 2018:
+    if year == 2018 or year == 2024:
         weight = "lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
     if "ttbar" in infile:
         weight = f"{weight}*topptWeight"
@@ -219,15 +221,6 @@ def merge_files(directory, input_files, output_file):
     os.system(hadd_command)
     rm_command = f"rm {' '.join([directory+'/'+infile for infile in input_files])}"
     os.system(rm_command)
-
-def score_calculation(score_tt_Wcb, score_ttLF, score_ttbb, score_ttbj):
-    """
-    Calculate the fractional score for the ttbb, ttbj, ttcc, and ttLF samples.
-
-    Parameters:
-    - scores corresponding to the different processes.
-    """
-    return score_tt_Wcb / (score_tt_Wcb + score_ttbb + score_ttbj + score_ttLF)
 
 
     
