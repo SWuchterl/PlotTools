@@ -6,12 +6,17 @@ import os
 import sys
 from colorama import Fore, Style 
 import numpy as np
+import multiprocessing as mp
+from functools import partial
 
 ROOT.ROOT.EnableImplicitMT()
+ROOT.gROOT.SetBatch(True)
+ROOT.TTreeCache.SetLearnEntries(200)
+ROOT.gEnv.SetValue("TFile.AsyncPrefetching", 2)
 
-def process_trees(input_files, output_files, tree_name, hist_configs, year, selections, eventClassification, use5FS):
+def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eventClassification, use5FS):
     """
-    Processes multiple TTrees, converts them to multiple TH1Ds for specified branches, and saves them to ROOT files.
+    Processes a TTree, converts it to multiple TH1Ds for specified branches, and saves them to a ROOT file.
 
     Parameters:
     - input_files: List of input ROOT files.
@@ -24,135 +29,169 @@ def process_trees(input_files, output_files, tree_name, hist_configs, year, sele
     - use5FS: Boolean indicating whether to use 5-flavor scheme MC for ttbb and ttbj processes.
     """
     print("")
-    if not (len(input_files) == len(output_files)):
-        raise ValueError("Input files and output files must have the same length.")
 
-    for infile, outfile in zip(input_files, output_files):
+    print(f"{Fore.RED}Processing file: {infile}{Style.RESET_ALL}")
 
-        print(f"{Fore.RED}Processing file: {infile}{Style.RESET_ALL}")
+    # Open input file
+    input_file = ROOT.TFile.Open(infile)
+    if not input_file or input_file.IsZombie():
+        raise FileNotFoundError(f"Could not open file: {infile}")
 
-        # Open input file
-        input_file = ROOT.TFile.Open(infile)
-        if not input_file or input_file.IsZombie():
-            raise FileNotFoundError(f"Could not open file: {infile}")
+    # Access the TTree
+    tree = input_file.Get(tree_name)
+    if not tree or not isinstance(tree, ROOT.TTree):
+        raise ValueError(f"TTree '{tree_name}' not found in file '{infile}'.")
+    
+    # Optimize TTree reading
+    tree.SetCacheSize(100000000)  # 100MB cache instead of 100MB
+    tree.AddBranchToCache("*", True)
 
-        # Access the TTree
-        tree = input_file.Get(tree_name)
-        if not tree or not isinstance(tree, ROOT.TTree):
-            raise ValueError(f"TTree '{tree_name}' not found in file '{infile}'.")
+    # Create RDataFrame from TTree
+    df = ROOT.RDataFrame(tree)
 
-        # Create RDataFrame from TTree
-        df = ROOT.RDataFrame(tree)
+    # Apply base selection everywhere (and early, to speed things up)
+    base_filter = selections["base"]
+    if "singlee" in infile:
+        base_filter += " && passTrigMu==0" # Remove from the electron channel the events that fired the muon trigger. Could choose to do vice versa as well.
+    df = df.Filter(base_filter)
 
-        if eventClassification:
-            print(f"{Fore.YELLOW}Running in event classification mode. Will define a series of fractional scores.{Style.RESET_ALL}")
-            # Define the fractional scores
-            df = df.Define("denominator", "score_ttbb + score_tt2b + score_ttbj + score_ttcc + score_tt2c + score_ttcj + score_ttLF") \
-                .Define("fscore_ttbb", "score_ttbb / denominator") \
-                .Define("fscore_tt2b", "score_tt2b / denominator") \
-                .Define("fscore_ttbj", "score_ttbj / denominator") \
-                .Define("fscore_ttcc", "score_ttcc / denominator") \
-                .Define("fscore_tt2c", "score_tt2c / denominator") \
-                .Define("fscore_ttcj", "score_ttcj / denominator") \
-                .Define("fscore_ttLF", "score_ttLF / denominator")
+    if eventClassification:
+        print(f"{Fore.YELLOW}Running in event classification mode. Will define a series of fractional scores.{Style.RESET_ALL}")
+        # Define the fractional scores
+        df = df.Define("denominator", "score_ttbb + score_tt2b + score_ttbj + score_ttcc + score_tt2c + score_ttcj + score_ttLF") \
+            .Define("fscore_ttbb", "score_ttbb / denominator") \
+            .Define("fscore_tt2b", "score_tt2b / denominator") \
+            .Define("fscore_ttbj", "score_ttbj / denominator") \
+            .Define("fscore_ttcc", "score_ttcc / denominator") \
+            .Define("fscore_tt2c", "score_tt2c / denominator") \
+            .Define("fscore_ttcj", "score_ttcj / denominator") \
+            .Define("fscore_ttLF", "score_ttLF / denominator")
+    else:
+        df = df.Define("ak4_1_pt", "ak4_pt.size() > 0 ? ak4_pt[0] : 0") \
+            .Define("ak4_1_phi",   "ak4_phi.size() > 0 ? ak4_phi[0] : 0") \
+            .Define("ak4_1_eta",   "ak4_eta.size() > 0 ? ak4_eta[0] : 0") \
+            .Define("ak4_2_pt",    "ak4_pt.size() > 1 ? ak4_pt[1] : 0") \
+            .Define("ak4_2_phi",   "ak4_phi.size() > 1 ? ak4_phi[1] : 0") \
+            .Define("ak4_2_eta",   "ak4_eta.size() > 1 ? ak4_eta[1] : 0") \
+            .Define("ak4_3_pt",    "ak4_pt.size() > 2 ? ak4_pt[2] : 0") \
+            .Define("ak4_3_phi",   "ak4_phi.size() > 2 ? ak4_phi[2] : 0") \
+            .Define("ak4_3_eta",   "ak4_eta.size() > 2 ? ak4_eta[2] : 0") \
+            .Define("ak4_4_pt",    "ak4_pt.size() > 3 ? ak4_pt[3] : 0") \
+            .Define("ak4_4_phi",   "ak4_phi.size() > 3 ? ak4_phi[3] : 0") \
+            .Define("ak4_4_eta",   "ak4_eta.size() > 3 ? ak4_eta[3] : 0")
+
+    tt_file_names = ["ttbb-4f", "ttbb-dps", "ttbar-powheg"]
+    tt4f_strings = ["ttbb", "ttbj"]
+    tt_strings   = ["ttcc", "ttcj", "ttLF"]
+
+    # Assign event weight based on data taking year and process type
+    weight = assign_event_weight(year, infile)
+
+    # If weight is a complex expression, define it as a new column
+    weight_column = "weight_column"
+    if not "data" in infile and not "Data" in infile: 
+        print(f"Event weight: {weight}")
+        df = df.Define(weight_column, weight)
+    else: # Keep the weight 1 for collision data
+        df = df.Define(weight_column, "1")
+
+    histograms = {}
+    # Process each selection-output combinations
+    for selection_name in selections:
+
+        # Apply base selection to every sample; apply the ttbar-specific selection to the right 4F, dps, and 5F powheg samples
+        if not "base" in selection_name and not any(x in infile for x in tt_file_names): 
+            continue
+        if any(x in infile for x in tt_file_names) and "base" in selection_name:
+            continue
+        if use5FS: # "ttbb", "ttbj" -> both powheg and dps samples; "ttcc", "ttcj", "ttLF" --> only powheg
+            if any(x in selection_name for x in tt4f_strings) and not ("powheg" in infile or "dps" in infile):
+                continue
+            if any(x in selection_name for x in tt_strings) and not "powheg" in infile: 
+                continue
         else:
-            df = df.Define("ak4_1_pt", "ak4_pt.size() > 0 ? ak4_pt[0] : 0") \
-                .Define("ak4_1_phi",   "ak4_phi.size() > 0 ? ak4_phi[0] : 0") \
-                .Define("ak4_1_eta",   "ak4_eta.size() > 0 ? ak4_eta[0] : 0") \
-                .Define("ak4_2_pt",    "ak4_pt.size() > 1 ? ak4_pt[1] : 0") \
-                .Define("ak4_2_phi",   "ak4_phi.size() > 1 ? ak4_phi[1] : 0") \
-                .Define("ak4_2_eta",   "ak4_eta.size() > 1 ? ak4_eta[1] : 0") \
-                .Define("ak4_3_pt",    "ak4_pt.size() > 2 ? ak4_pt[2] : 0") \
-                .Define("ak4_3_phi",   "ak4_phi.size() > 2 ? ak4_phi[2] : 0") \
-                .Define("ak4_3_eta",   "ak4_eta.size() > 2 ? ak4_eta[2] : 0") \
-                .Define("ak4_4_pt",    "ak4_pt.size() > 3 ? ak4_pt[3] : 0") \
-                .Define("ak4_4_phi",   "ak4_phi.size() > 3 ? ak4_phi[3] : 0") \
-                .Define("ak4_4_eta",   "ak4_eta.size() > 3 ? ak4_eta[3] : 0")
-
-        tt_file_names = ["ttbb-4f", "ttbb-dps", "ttbar-powheg"]
-        tt4f_strings = ["ttbb", "ttbj"]
-        tt_strings   = ["ttcc", "ttcj", "ttLF"]
-
-        # Assign event weight based on data taking year and process type
-        weight = assign_event_weight(year, infile)
-
-        # Process each selection-output combinations
-        for selection_name in selections:
-
-            # Apply base selection to every sample; apply the ttbar-specific selection to the right 4F, dps, and 5F powheg samples
-            if not "base" in selection_name and not any(x in infile for x in tt_file_names): 
+            if any(x in selection_name for x in tt4f_strings) and not "bb" in infile:
                 continue
-            if any(x in infile for x in tt_file_names) and "base" in selection_name:
+            if any(x in selection_name for x in tt_strings) and not "powheg" in infile:
                 continue
-            if use5FS: # "ttbb", "ttbj" -> both powheg and dps samples; "ttcc", "ttcj", "ttLF" --> only powheg
-                if any(x in selection_name for x in tt4f_strings) and not ("powheg" in infile or "dps" in infile):
-                    continue
-                if any(x in selection_name for x in tt_strings) and not "powheg" in infile: 
-                    continue
-            else:
-                if any(x in selection_name for x in tt4f_strings) and not "bb" in infile:
-                    continue
-                if any(x in selection_name for x in tt_strings) and not "powheg" in infile:
-                    continue
 
-        
-            # Produce output file
-            tt_outfile_name = outfile.replace('.root','_'+selection_name+'.root')
-            output_file = tt_outfile_name if not "base" in selection_name else outfile
-            output_root = ROOT.TFile(output_file, "RECREATE")
 
-            # Add event selection making sure that the "base" selection is applied everywhere
-            event_selection = f"{selections['base']}{selections[selection_name]}" if not "base" in selection_name else f"{selections[selection_name]}"
-            if "singlee" in infile:
-                event_selection += " && passTrigMu==0" # Remove from the electron channel the events that fired the muon trigger. Could choose to do vice versa as well.
-            print(f"Applying selection: {Fore.GREEN}{event_selection}{Style.RESET_ALL} -> Producing output file: {output_file}")
-            df_selected = df.Filter(event_selection)
+        if not "base" in selection_name:
+            print(f"Applying additional selection for {infile}: {Fore.RED}{selection_name}{Style.RESET_ALL}")
+            ttbar_event_selection = f"{selections[selection_name]}"
+            df_selected = df.Filter(ttbar_event_selection)
+            print(f"Events passing additional ttbar selection: {df_selected.Count().GetValue()}")
+        else:
+            df_selected = df
 
-            #print("after first event selection:", df_selected.Count().GetValue())
+        print(f"Applying selection: {Fore.GREEN}{selection_name}{Style.RESET_ALL}")
 
-            # If weight is a complex expression, define it as a new column
-            weight_column = "weight_column"
-            if not "data" in infile:
-                print(f"Event weight: {weight}")
-                df_selected = df_selected.Define(weight_column, weight)
-            else: # Keep the weight 1 for collision data
-                df_selected = df_selected.Define(weight_column, "1")
+        # Define event classification for the dedicated mode
+        if eventClassification:
+            from configs.weights_and_constants import adhoc_selection, adhoc_binning
+            adhoc_selection = adhoc_selection.copy()
+            adhoc_binning = adhoc_binning.copy()
 
-            # Define event classification for the dedicated mode
-            if eventClassification:
-                from configs.weights_and_constants import adhoc_selection, adhoc_binning
-                adhoc_selection = adhoc_selection.copy()
-                adhoc_binning = adhoc_binning.copy()
-
-            # Create histograms for each branch
-            final_df = dict()
-            for hist_config in hist_configs:
-                branch_name = hist_config['branch']
-                nbins = int(hist_config['nbins'])
-                xmin = float(hist_config['xmin'])
-                xmax = float(hist_config['xmax'])
-                print(f"Creating histogram for branch: {branch_name}")
+        # Create histograms for each branch
+        final_df = dict()
+        for hist_config in hist_configs:
+            branch_name = hist_config['branch']
+            nbins = int(hist_config['nbins'])
+            xmin = float(hist_config['xmin'])
+            xmax = float(hist_config['xmax'])
+            print(f"Creating histogram for branch: {branch_name}")
                 
-                final_df[branch_name] = df_selected.Filter(adhoc_selection[branch_name]) if eventClassification else df_selected
+            final_df[branch_name] = df_selected.Filter(adhoc_selection[branch_name]) if eventClassification else df_selected
 
-                # Create histogram
-                if eventClassification:
-                    hist = final_df[branch_name].Histo1D((f"h_{branch_name}", f"Histogram of {branch_name}", len(adhoc_binning[branch_name])-1, adhoc_binning[branch_name]), branch_name, weight_column)
-                else:
-                    hist = final_df[branch_name].Histo1D((f"h_{branch_name}", f"Histogram of {branch_name}", nbins, xmin, xmax), branch_name, weight_column)
+            hist_key = (branch_name, selection_name)
+            # Create histogram
+            if eventClassification:
+                histograms[hist_key] = final_df[branch_name].Histo1D((f"h_{branch_name}", f"Histogram of {branch_name}", len(adhoc_binning[branch_name])-1, adhoc_binning[branch_name]), branch_name, weight_column)
+            else:
+                histograms[hist_key] = final_df[branch_name].Histo1D((f"h_{branch_name}", f"Histogram of {branch_name}", nbins, xmin, xmax), branch_name, weight_column)
 
-                #print(f"Number of events after full selection: {hist.Integral()}")
 
 
-                # Write histogram to output file
-                hist.Write()
+    # Materialising histograms
+    print(f"Materializing {len(histograms)} histograms...")
+    materialized_hists = {}
+    for key, hist_lazy in histograms.items():
+        materialized_hists[key] = hist_lazy.GetPtr()   
 
-            # Close files
-            output_root.Close()
+    output_file_handles = {}
+    for key, hist in materialized_hists.items():
+        branch_name, selection_name = key
+        tt_outfile_name = outfile.replace('.root','_'+selection_name+'.root')
+        output_file = tt_outfile_name if not "base" in selection_name else outfile
 
-        input_file.Close()
+        if output_file not in output_file_handles:
+            output_file_handles[output_file] = ROOT.TFile(output_file, "UPDATE")
 
-        print(f"Saved histograms to: {outfile}\n")
+        output_file_handles[output_file].cd()
+        hist.Write()
+    
+    # Chiudi tutti i file
+    for fOut in output_file_handles.values():
+        fOut.Close()
+
+    input_file.Close()
+    print(f"{Fore.GREEN}Completed processing {infile}{Style.RESET_ALL}")
+
+
+def process_trees_parallel(input_files, output_files, tree_name, hist_configs, year, selections, eventClassification, use5FS):
+
+    process_func = partial(
+        process_tree,
+        tree_name=tree_name,
+        hist_configs=hist_configs,
+        year=year,
+        selections=selections,
+        eventClassification=eventClassification,
+        use5FS=use5FS
+    )
+
+    with mp.Pool(processes=min(len(input_files), mp.cpu_count())) as pool:
+        pool.starmap(process_func, zip(input_files, output_files))
 
 def read_csv(csv_file):
     """
@@ -254,11 +293,13 @@ if __name__ == "__main__":
     hist_configs = read_csv(args.input_csv)
 
     selections = {"base": "n_ak4>=4 && (n_btagM+n_ctagM)>=3 && n_btagM>=1",
-                 "ttbb" : " && genEventClassifier==9 && wcb==0",
-                 "ttbj" : " && (genEventClassifier==7 || genEventClassifier==8) && wcb==0",
-                 "ttcc" : " && genEventClassifier==6 && wcb==0",
-                 "ttcj" : " && (genEventClassifier==4 || genEventClassifier==5) && wcb==0",
-                 "ttLF" : " && tt_category==0 && higgs_decay==0 && wcb==0"
+                 "ttbb" : "genEventClassifier==9",
+                 "ttbj" : "genEventClassifier==7",
+                 "tt2b" : "genEventClassifier==8",
+                 "ttcc" : "genEventClassifier==6",
+                 "ttcj" : "genEventClassifier==4",
+                 "tt2c" : "genEventClassifier==5",
+                 "ttLF" : "tt_category==0"
     }
 
     # Apply trigger selection to separate channels if requested
@@ -277,24 +318,35 @@ if __name__ == "__main__":
         for key in selections.keys():
             selections[key] += f" && ({args.add_selection})"
 
-    process_trees(input_files, output_files, args.tree_name, hist_configs, args.year, selections, args.eventClassification, use5FS)
+    process_trees_parallel(input_files, output_files, args.tree_name, hist_configs, args.year, selections, args.eventClassification, use5FS)
+
+    # Make sure the previous step is completed before merging files
+    ROOT.gSystem.Exec("sync")
 
     # Merge some of the output files
-    ttV_list = ["h_ttW.root", "h_ttZ.root"]
-    merge_files(args.output_dir, ttV_list, "h_ttV.root")
-    ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttV.root"]
-    merge_files(args.output_dir, ttH_list, "h_ttH-ttV.root")
-    if use5FS:
-        ttbb_list = ["h_ttbar-powheg_ttbb.root", "h_ttbb-dps_ttbb.root"]
-        merge_files(args.output_dir, ttbb_list, "h_ttbb-withDPS.root")
-        ttbj_list = ["h_ttbar-powheg_ttbj.root", "h_ttbb-dps_ttbj.root"]
-        merge_files(args.output_dir, ttbj_list, "h_ttbj-withDPS.root")
-    else:
-        ttbb_list = ["h_ttbb-4f_ttbb.root", "h_ttbb-dps_ttbb.root"]
-        merge_files(args.output_dir, ttbb_list, "h_ttbb-withDPS.root")
-        ttbj_list = ["h_ttbb-4f_ttbj.root", "h_ttbb-dps_ttbj.root"]
-        merge_files(args.output_dir, ttbj_list, "h_ttbj-withDPS.root")
-    diboson_list = ["h_TWZ.root", "h_diboson.root"]
-    merge_files(args.output_dir, diboson_list, "h_diboson-tWZ.root")
+
+    # We do not have ttV samples for 2024 yet
+    #ttV_list = ["h_ttW.root", "h_ttZ.root"]
+    #merge_files(args.output_dir, ttV_list, "h_ttV.root")
+
+    # We do not have ttH samples for 2024 yet
+    #ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttV.root"]
+    #merge_files(args.output_dir, ttH_list, "h_ttH-ttV.root")
+
+    # We do not have dps samples for 2024 yet
+    #if use5FS:
+    #    ttbb_list = ["h_ttbar-powheg_ttbb.root", "h_ttbb-dps_ttbb.root"]
+    #    merge_files(args.output_dir, ttbb_list, "h_ttbb-withDPS.root")
+    #    ttbj_list = ["h_ttbar-powheg_ttbj.root", "h_ttbb-dps_ttbj.root"]
+    #    merge_files(args.output_dir, ttbj_list, "h_ttbj-withDPS.root")
+    #else:
+    #    ttbb_list = ["h_ttbb-4f_ttbb.root", "h_ttbb-dps_ttbb.root"]
+    #    merge_files(args.output_dir, ttbb_list, "h_ttbb-withDPS.root")
+    #    ttbj_list = ["h_ttbb-4f_ttbj.root", "h_ttbb-dps_ttbj.root"]
+    #    merge_files(args.output_dir, ttbj_list, "h_ttbj-withDPS.root")
+
+    # We do not have TWZ for 2024 yet
+    #diboson_list = ["h_TWZ.root", "h_diboson.root"]
+    #merge_files(args.output_dir, diboson_list, "h_diboson-tWZ.root")
     data_list = ["h_singlee.root", "h_singlemu.root"]
     merge_files(args.output_dir, data_list, "h_Data.root")
