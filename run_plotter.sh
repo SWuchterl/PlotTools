@@ -1,5 +1,6 @@
 #!/bin/sh
 # Preselection scores
+python3 plotter.py --input_dir histos_01102025/ --output_dir plots_01102025/ --sig_norm 100 --input_csv configs/hconfig.csv --blind
 python3 plotter.py --input_dir histos_01102025/ --output_dir plots_01102025/ --sig_norm 100 --input_csv configs/hconfig.csv --blind --log
 
 # Scores

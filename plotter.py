@@ -6,6 +6,9 @@ import csv
 import os
 import cmsstyle as CMS
 
+ROOT.TH1.SetDefaultSumw2(True)
+ROOT.gROOT.SetBatch(True)
+
 def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, blind):
     """
     Reads TH1Ds with the same name from multiple files, stacks them in a THStack, and saves the result.
@@ -187,7 +190,8 @@ if __name__ == "__main__":
 
     # Set plotting details
     CMS.SetExtraText("Work in progress")
-    CMS.SetLumi("59.83")
+    CMS.SetLumi("109.08")
+    CMS.SetEnergy("13.6")
 
     # Get input files from the input_dir
     input_files = glob.glob(f"{args.input_dir}*.root")

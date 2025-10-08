@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='numpy')
 import ROOT
 import matplotlib.pyplot as plt
 import mplhep as hep  # HEP (CMS) extensions/styling on top of mpl
@@ -7,7 +9,9 @@ import glob
 import os
 import csv
 import numpy as np
-#import hist as hst
+from ctypes import c_double
+
+ROOT.TH1.SetDefaultSumw2(True)
 
 def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1, log=False):
     """
@@ -20,26 +24,18 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
     - normalization: Decide what to normalize the histograms to.
     - log: Use log scale on the Y-axis.
     """
+
     # Create a figure with two subplots (main and ratio)
     fig, (ax, ax_ratio) = plt.subplots(2, 1, figsize=(10, 12), 
                                      gridspec_kw={'height_ratios': [3, 1], 'hspace': 0.05})
 
-    #plt.rcParams.update({
-    #'font.size': 12,
-    #'axes.titlesize': 14,
-    #'axes.labelsize': 13,
-    #'xtick.labelsize': 12,
-    #'ytick.labelsize': 12,
-    #'legend.fontsize': 12,
-    #'figure.titlesize': 14
-    #})
 
-    sum_of_backgrounds = ROOT.TH1D("sum_of_backgrounds", "Sum of backgrounds", 100, 0, 1)  # Example binning
+    sum_of_backgrounds = None# ROOT.TH1D("sum_of_backgrounds", "Sum of backgrounds", 100, 0, 1)  # Example binning
 
     # Create the histograms of Wcb and ttLF for the ratio
     hist_wcb = None
     hist_process = None
-    process_name_beautifier = {"Wcb": "Wcb", "ttLF": "tt+LF", "ttbb": "tt+bb", "ttbj": "tt+bj", "ttcc": "tt+cc", "ttcj": "tt+cj"}
+    process_name_beautifier = {"vcb": "Wcb", "ttLF": "tt+LF", "ttbb": "tt+bb", "tt2b": "tt+2b", "ttbj": "tt+bj", "ttcc": "tt+cc", "tt2c": "tt+2c", "ttcj": "tt+cj"}
     process = process_name_beautifier[process]
 
     # Loop through input files and plot histograms
@@ -72,7 +68,7 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
         hist_clone.Scale(normalization/hist_clone.Integral())
 
         # Save histograms for ratio plot
-        if proc_name == "Wcb":
+        if "Wcb" in proc_name:
             hist_wcb = hist_clone.Clone("hist_wcb")
             hist_wcb.SetDirectory(0)
         elif proc_name == process:
@@ -80,7 +76,10 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
             hist_process.SetDirectory(0)
 
         if not "Wcb" in proc_name and not "Data" in proc_name:
-            sum_of_backgrounds.Add(hist_clone)
+            if sum_of_backgrounds is None:
+                sum_of_backgrounds = hist_clone.Clone("sum_of_backgrounds")
+            else:
+                sum_of_backgrounds.Add(hist_clone)
 
         if not "Wcb" in proc_name and not process in proc_name:
             continue
@@ -150,10 +149,7 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
     ax.text(0.65, 0.77, '$N_{\mathrm{jet}} > 3$' + '\n' + '$N_{\mathrm{bjet}} > 0$' + '\n' + '$N_{\mathrm{b/cjet}} > 2$', 
              transform=ax.transAxes, fontsize=18, verticalalignment='top')
 
-    #plt.tight_layout()
-    # Set the style for the plot
-    hep.style.use("CMS")
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="59.8")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", energy="13.6 TeV")
     # Save the plot
     output_file_png = os.path.join(output_dir, f'unstacked_{hist_name}_{process.replace("+", "")}.png')
     output_file_pdf = os.path.join(output_dir, f'unstacked_{hist_name}_{process.replace("+", "")}.pdf')
@@ -161,6 +157,120 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
     plt.savefig(output_file_pdf)
     plt.close()
     print("")
+
+def plot_significance(input_files, output_dir, hist_name, cut_pace, log=False):
+    """
+    Plots the significance as a function of a cut on a given variable.
+    Parameters:
+    - input_files: List of input ROOT files.
+    - output_dir: Output directory for the plots.
+    - hist_name: Name of the histogram to plot.
+    - cut_variable: The variable to apply the cut on.
+    - log: Use log scale on the Y-axis.
+    """
+
+    fig, (ax, ax_significance) = plt.subplots(2, 1, figsize=(10, 12), gridspec_kw={'height_ratios': [3, 1], 'hspace': 0.05}, sharex=True)
+
+    signal = None
+    sum_of_backgrounds = None
+
+    for infile in input_files:
+        file_in = ROOT.TFile.Open(infile)
+        if not file_in or file_in.IsZombie():
+            raise FileNotFoundError(f"Could not open file: {infile}")
+
+        if "Data" in infile or "data" in infile:
+            continue
+        print(f"Processing file: {infile}")
+
+        # Retrieve the histogram
+        hist = file_in.Get(hist_name)
+        if not hist or not isinstance(hist, ROOT.TH1):
+            raise ValueError(f"Histogram '{hist_name}' not found in file '{infile}'.")
+
+        # Clone the histogram to avoid issues when the file is closed
+        hist_clone = hist.Clone()
+        hist_clone.SetDirectory(0)
+
+        if "vcb" in infile:
+            signal = hist_clone.Clone("signal")
+            signal.SetDirectory(0)
+        #elif "ttLF" in infile:
+        else:
+            if sum_of_backgrounds is None:
+                sum_of_backgrounds = hist_clone.Clone("sum_of_backgrounds")
+            else:
+                sum_of_backgrounds.Add(hist_clone)
+            sum_of_backgrounds.SetDirectory(0)
+        #else:
+        #    continue
+
+        file_in.Close()
+
+    significance = []
+    significance_err = []
+    # Apply the cut
+    for pace in np.arange(cut_pace, 1 + cut_pace, cut_pace):
+        sig_err = c_double(0.0)
+        bkg_err = c_double(0.0)
+        sig= signal.IntegralAndError(1, signal.FindBin(pace), sig_err) # Signal before the cut
+        bkg = sum_of_backgrounds.IntegralAndError(1, sum_of_backgrounds.FindBin(pace), bkg_err) # Background before the cut
+        significance.append(sig / (bkg)**0.5 if (sig + bkg) > 0 else 0)
+        significance_err.append( ( 1./bkg * (sig_err.value**2 + (sig**2 * bkg_err.value**2 / (4*bkg**2))) )**0.5 if bkg > 0 else 0 )
+
+    # Convert signal histogram to numpy array for plotting
+    magnify_signal = 100.
+    bin_edges_signal = [signal.GetBinLowEdge(i) for i in range(1, signal.GetNbinsX() + 2)]
+    y_signal = [signal.GetBinContent(i)*magnify_signal for i in range(1, signal.GetNbinsX() + 1)]
+    y_signal_err = [signal.GetBinError(i)*magnify_signal for i in range(1, signal.GetNbinsX() + 1)]
+    
+    # Convert background histogram to numpy array for plotting
+    bin_edges_bkg = [sum_of_backgrounds.GetBinLowEdge(i) for i in range(1, sum_of_backgrounds.GetNbinsX() + 2)]
+    y_bkg = [sum_of_backgrounds.GetBinContent(i) for i in range(1, sum_of_backgrounds.GetNbinsX() + 1)]
+    y_bkg_err = [sum_of_backgrounds.GetBinError(i) for i in range(1, sum_of_backgrounds.GetNbinsX() + 1)]
+    
+    # Plot the histograms
+    ax.hist(bin_edges_signal[:-1], bins=bin_edges_signal, weights=y_signal, 
+            histtype='step', label='Wcb x ' + f"{magnify_signal:.0f}", linewidth=2, color='darkorange')
+    ax.hist(bin_edges_bkg[:-1], bins=bin_edges_bkg, weights=y_bkg, 
+            histtype='step', label='Sum of bkgs', linewidth=2, color='black')
+    
+    bin_centers_signal = [(bin_edges_signal[i] + bin_edges_signal[i+1])/2 for i in range(len(bin_edges_signal)-1)]
+    bin_centers_bkg = [(bin_edges_bkg[i] + bin_edges_bkg[i+1])/2 for i in range(len(bin_edges_bkg)-1)]
+    
+    ax.fill_between(bin_centers_signal, 
+                    [y - err for y, err in zip(y_signal, y_signal_err)],
+                    [y + err for y, err in zip(y_signal, y_signal_err)],
+                    alpha=0.3, color='darkorange', step='mid')
+    ax.fill_between(bin_centers_bkg,
+                    [y - err for y, err in zip(y_bkg, y_bkg_err)],
+                    [y + err for y, err in zip(y_bkg, y_bkg_err)],
+                    alpha=0.3, color='black', step='mid')
+
+    ax.set_ylabel('Events')
+    ax.grid(True, alpha=0.4)    
+    if log:
+        ax.set_yscale('log')
+        ax.set_ylim(top=15*max(max(y_signal), max(y_bkg)), bottom=1e-1)
+    ax.legend()
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", com="13.6")
+
+    bin_centers = [0 + cut_pace/2 + i*cut_pace for i in range(int(1/cut_pace))]
+    ax_significance.errorbar(bin_centers, significance, yerr=significance_err, 
+                         fmt='o', color='royalblue', markersize=4)
+    xaxis_name = hist_name.replace('h_', '').replace('_', ' ')
+    # Configure the ratio plot
+    ax_significance.set_ylabel('S/$\sqrt{B}$')
+    ax_significance.set_xlabel(xaxis_name)
+    ax_significance.grid(True, alpha=0.4)
+
+    # Save the plot
+    print(f"Saving histogram: {output_dir}/significance_{hist_name}.pdf/.png")
+    output_file_png = os.path.join(output_dir, f'significance_{hist_name}.png')
+    output_file_pdf = os.path.join(output_dir, f'significance_{hist_name}.pdf')
+    plt.savefig(output_file_png)
+    plt.savefig(output_file_pdf)
+    plt.close()
 
 def create_output_dir(output_dir):
     """
@@ -248,9 +358,9 @@ def plot_purity(input_files, output_dir):
 
     x = np.arange(len(labels))  # the label locations
     width = 0.35  # the width of the bars
-    hep.style.use("CMS")
+
     fig, ax = plt.subplots(figsize=(10, 10))
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="59.8")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", com="13.6")
     bars = ax.bar(x, values, width, label='Purity')
     ax.set_ylabel('Purity')
     ax.set_xlabel('NN category')
@@ -367,9 +477,9 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
 
     x = np.arange(len(labels))  # the label locations
     width = 0.35  # the width of the bars
-    hep.style.use("CMS")
+
     fig, ax = plt.subplots(figsize=(10, 10))
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="59.8")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", com="13.6")
     bars_CR = ax.bar(x - width/3, values_CR, width, label='CR')
     bars_fscores = ax.bar(x, values_CR_fscores, width, label='CR-fscores')
     bars_SR = ax.bar(x + width/3, values_SR, width, label='SR')
@@ -478,13 +588,12 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
 
     x = np.arange(len(labels_4F))  # the label locations
     width = 0.35  # the width of the bars
-    hep.style.use("CMS")
+
     fig, (ax, ax_ratio) = plt.subplots(2, 1, figsize=(10, 12), 
                                        gridspec_kw={'height_ratios': [3, 1],  # proporzione 3:1 tra i plot
                                                    'hspace': 0.05})  # spazio minimo tra i plot
     
-    hep.style.use("CMS")
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="59.8")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", com="13.6")
     
     # Plot principale sui dati
     bars4F = ax.bar(x - width/2, values_4F, width, label=process + ' 4FS', color='blue', alpha=0.7)
@@ -543,8 +652,8 @@ def compare_4F5F_vs_score(input_files, output_dir,):
     # Create a figure with two subplots (main and ratio)
     fig, (ax, ax_ratio) = plt.subplots(2, 1, figsize=(10, 12), 
                                      gridspec_kw={'height_ratios': [3, 1], 'hspace': 0.05})
-    hep.style.use("CMS")
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="59.8")
+
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", com="13.6")
     
     category = {"h_score_tt_Wcb_4F" : ROOT.TH1D("h_score_tt_Wcb_4F", "", 20, 0, 1),
                 "h_score_tt_Wcb_5F" : ROOT.TH1D("h_score_tt_Wcb_5F", "", 20, 0, 1)}
@@ -642,6 +751,7 @@ if __name__ == "__main__":
     parser.add_argument("--normalization", type=int, default=1, help="Decide the histogram normalization.")
     parser.add_argument("--log", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to use log scale on the Y-axis.")
     parser.add_argument("--purity", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to plot purity.")
+    parser.add_argument("--significance", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to plot significance.")
     parser.add_argument("--multiRegion", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to plot the purity for multiple regions.")
     parser.add_argument("--raw_evt_number", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to plot the raw event numbers.")
     parser.add_argument("--plot_4F5F", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to plot a 4F-5F comparison in every NN category.")
@@ -649,10 +759,6 @@ if __name__ == "__main__":
     parser.add_argument("--process", type=str, required=False, help="Decide if you want to plot ttbb or ttbj in the 4F-5F comparison.")
 
     args = parser.parse_args()
-
-    # Set plotting details
-    #CMS.SetExtraText("Work in progress")
-    #CMS.SetLumi("59.83")
 
     # Get input files from the input_dir
     if args.multiRegion:
@@ -664,10 +770,14 @@ if __name__ == "__main__":
     else:
         input_files = glob.glob(f"{args.input_dir}*.root")
 
-    input_processes = ["ttWcb", "diboson-tWZ", "singletop", "ttH-ttV", "ttbar-powheg_ttLF", "ttbb-withDPS", "ttbj-withDPS", "ttbar-powheg_ttcc", "ttbar-powheg_ttcj", "wjets"]
+    input_processes = ["ttbar-vcb", "diboson", "singletop", "ttbar-powheg_ttLF", "ttbar-powheg-ttbb", "ttbar-powheg-tt2b", "ttbar-powheg-ttbj", "ttbar-powheg_ttcc", "ttbar-powheg_tt2c", "ttbar-powheg_ttcj", "w-fxfx"]
+    #input_processes = ["ttWcb", "diboson-tWZ", "singletop", "ttH-ttV", "ttbar-powheg_ttLF", "ttbb-withDPS", "ttbj-withDPS", "ttbar-powheg_ttcc", "ttbar-powheg_ttcj", "wjets"]
 
     # Create the output directory if it does not exist
     create_output_dir(args.output_dir)
+
+    # Set the style for the plot
+    hep.style.use("CMS")
 
     # Plot either all histograms from the csv file or a single histogram. Decide whether to plot purity.
     if args.purity:
@@ -679,6 +789,8 @@ if __name__ == "__main__":
         compare_FSs(input_files, args.output_dir, args.process, args.raw_evt_number)
     elif args.plot_4F5F_vs_score:
         compare_4F5F_vs_score(input_files, args.output_dir)
+    elif args.significance:
+            plot_significance(input_files, args.output_dir, args.hist_name, cut_pace=0.02, log=args.log)
     else:
         if not args.hist_name:
             hist_list = read_csv(args.input_csv)

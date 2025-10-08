@@ -13,6 +13,7 @@ ROOT.ROOT.EnableImplicitMT()
 ROOT.gROOT.SetBatch(True)
 ROOT.TTreeCache.SetLearnEntries(200)
 ROOT.gEnv.SetValue("TFile.AsyncPrefetching", 2)
+ROOT.TH1.SetDefaultSumw2(True)
 
 def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eventClassification, use5FS):
     """
