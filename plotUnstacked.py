@@ -29,26 +29,52 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
     fig, (ax, ax_ratio) = plt.subplots(2, 1, figsize=(10, 12), 
                                      gridspec_kw={'height_ratios': [3, 1], 'hspace': 0.05})
 
+    sum_of_backgrounds = None
 
-    sum_of_backgrounds = None# ROOT.TH1D("sum_of_backgrounds", "Sum of backgrounds", 100, 0, 1)  # Example binning
-
-    # Create the histograms of Wcb and ttLF for the ratio
+    # Create the histograms of Wcb and target process for the ratio
     hist_wcb = None
     hist_process = None
-    process_name_beautifier = {"vcb": "Wcb", "ttLF": "tt+LF", "ttbb": "tt+bb", "tt2b": "tt+2b", "ttbj": "tt+bj", "ttcc": "tt+cc", "tt2c": "tt+2c", "ttcj": "tt+cj"}
-    process = process_name_beautifier[process]
+    
+    process_name_beautifier = {
+        "vcb": "Wcb", 
+        "ttLF": "tt+LF", 
+        "ttbb": "tt+bb", 
+        "tt2b": "tt+2b", 
+        "ttbj": "tt+bj", 
+        "ttcc": "tt+cc", 
+        "tt2c": "tt+2c", 
+        "ttcj": "tt+cj"
+    }
+    
+    # SALVA il process originale (prima della conversione)
+    process_key = process  # es. "ttcc"
+    process_label = process_name_beautifier.get(process, process)  # es. "tt+cc"
 
     # Loop through input files and plot histograms
     for infile in input_files:
 
-        proc_name = os.path.basename(infile).replace('.root', '')
-        proc_name = proc_name.replace('h_', '')
+        # Estrai il nome del processo dal filename
+        proc_name_raw = os.path.basename(infile).replace('.root', '').replace('h_', '')
+        
+        # Gestione caso speciale ttbb-4f
+        if "ttbb" in proc_name_raw:
+            proc_name_raw = proc_name_raw.split("_")[1]
 
-        for key in process_name_beautifier.keys():
-            if key in proc_name:
-                proc_name = process_name_beautifier[key]
+        # CONFRONTA PRIMA DELLA CONVERSIONE per salvare hist_process
+        is_target_process = (proc_name_raw == process_key or process_key in proc_name_raw)
+        is_wcb = "vcb" in proc_name_raw or "Wcb" in proc_name_raw
+        
+        # Ora converti per il plotting
+        proc_name_display = proc_name_raw
+        for key, value in process_name_beautifier.items():
+            if key in proc_name_raw:
+                proc_name_display = value
                 break
-        print(f"Process name: {proc_name}")
+        
+        print(f"Processing file: {infile}")
+        print(f"  Process (raw): {proc_name_raw}")
+        print(f"  Process (display): {proc_name_display}")
+        print(f"  Is target: {is_target_process}, Is Wcb: {is_wcb}")
 
         # Open the file
         root_file = ROOT.TFile.Open(infile)
@@ -62,26 +88,30 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
 
         # Clone the histogram to avoid issues when the file is closed
         hist_clone = hist.Clone()
-        hist_clone.SetDirectory(0)  # Detach from the file
+        hist_clone.SetDirectory(0)
 
         # Normalize if needed
-        hist_clone.Scale(normalization/hist_clone.Integral())
+        if hist_clone.Integral() > 0:
+            hist_clone.Scale(normalization / hist_clone.Integral())
 
         # Save histograms for ratio plot
-        if "Wcb" in proc_name:
+        if is_wcb:
             hist_wcb = hist_clone.Clone("hist_wcb")
             hist_wcb.SetDirectory(0)
-        elif proc_name == process:
-            hist_process = hist_clone.Clone(f"hist_{process}")
+        elif is_target_process:
+            hist_process = hist_clone.Clone(f"hist_{process_key}")
             hist_process.SetDirectory(0)
 
-        if not "Wcb" in proc_name and not "Data" in proc_name:
+        # Somma TUTTI i background (esclusi Wcb e Data)
+        if not is_wcb and "Data" not in infile:
             if sum_of_backgrounds is None:
                 sum_of_backgrounds = hist_clone.Clone("sum_of_backgrounds")
+                sum_of_backgrounds.SetDirectory(0)
             else:
                 sum_of_backgrounds.Add(hist_clone)
 
-        if not "Wcb" in proc_name and not process in proc_name:
+        # Plotta SOLO Wcb e il processo target
+        if not is_wcb and not is_target_process:
             continue
 
         # Convert ROOT histogram to numpy array for plotting
@@ -89,15 +119,17 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
         y = [hist_clone.GetBinContent(i) for i in range(1, hist_clone.GetNbinsX() + 1)]
 
         # Plotting in the upper panel
-        color = 'royalblue' if "Wcb" in proc_name else 'darkorange'
-        ax.hist(bin_edges[:-1], bins=bin_edges, weights=y, histtype='step', label=proc_name, linewidth=2, color=color)
+        color = 'royalblue' if is_wcb else 'darkorange'
+        ax.hist(bin_edges[:-1], bins=bin_edges, weights=y, histtype='step', 
+                label=proc_name_display, linewidth=2, color=color)
 
-    sum_of_backgrounds.Scale(normalization/sum_of_backgrounds.Integral())
-    # Convert the sum of backgrounds to numpy arrays for plotting
-    bin_edges = [sum_of_backgrounds.GetBinLowEdge(i) for i in range(1, sum_of_backgrounds.GetNbinsX() + 2)]
-    y = [sum_of_backgrounds.GetBinContent(i) for i in range(1, sum_of_backgrounds.GetNbinsX() + 1)]
-    # Plot the sum of backgrounds together with the other histograms
-    ax.hist(bin_edges[:-1], bins=bin_edges, weights=y, histtype='step', label='Sum of bkgs', linewidth=2, color='black')
+    # Plotta la somma dei background
+    if sum_of_backgrounds is not None and sum_of_backgrounds.Integral() > 0:
+        sum_of_backgrounds.Scale(normalization / sum_of_backgrounds.Integral())
+        bin_edges = [sum_of_backgrounds.GetBinLowEdge(i) for i in range(1, sum_of_backgrounds.GetNbinsX() + 2)]
+        y = [sum_of_backgrounds.GetBinContent(i) for i in range(1, sum_of_backgrounds.GetNbinsX() + 1)]
+        ax.hist(bin_edges[:-1], bins=bin_edges, weights=y, histtype='step', 
+                label='Sum of bkgs', linewidth=2, color='black')
 
     # Add code here for the ratio plot
     if hist_wcb and hist_process:
@@ -119,14 +151,14 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
 
         # Configure ratio plot
         name = hist_name.replace('h_', '').replace('_', ' ')
-        ax_ratio.set_ylabel(f'Wcb / {process}')
+        ax_ratio.set_ylabel(f'Wcb / {process_label}')  # Usa la versione beautified
         ax_ratio.set_xlabel(name) 
-        x = np.arange(0,1.1,0.1)
+        x = np.arange(0, 1.1, 0.1)
         ax_ratio.set_xticks(x)
         ax_ratio.grid(True, alpha=0.4)     
-        ax_ratio.set_xlim(ax.get_xlim()) # Same x-limits for both plots
+        ax_ratio.set_xlim(ax.get_xlim())
         ax_ratio.set_ylim(bottom=-5, top=20)  
-        ax.set_xlabel('') # Hide x-axis labels of the main plot
+        ax.set_xlabel('')
 
     # Set log scale if required
     if log:
@@ -149,10 +181,11 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
     ax.text(0.65, 0.77, '$N_{\mathrm{jet}} > 3$' + '\n' + '$N_{\mathrm{bjet}} > 0$' + '\n' + '$N_{\mathrm{b/cjet}} > 2$', 
              transform=ax.transAxes, fontsize=18, verticalalignment='top')
 
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", energy="13.6 TeV")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
+    
     # Save the plot
-    output_file_png = os.path.join(output_dir, f'unstacked_{hist_name}_{process.replace("+", "")}.png')
-    output_file_pdf = os.path.join(output_dir, f'unstacked_{hist_name}_{process.replace("+", "")}.pdf')
+    output_file_png = os.path.join(output_dir, f'unstacked_{hist_name}_{process_label.replace("+", "")}.png')
+    output_file_pdf = os.path.join(output_dir, f'unstacked_{hist_name}_{process_label.replace("+", "")}.pdf')
     plt.savefig(output_file_png)
     plt.savefig(output_file_pdf)
     plt.close()
@@ -253,7 +286,7 @@ def plot_significance(input_files, output_dir, hist_name, cut_pace, log=False):
         ax.set_yscale('log')
         ax.set_ylim(top=15*max(max(y_signal), max(y_bkg)), bottom=1e-1)
     ax.legend()
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", com="13.6")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
 
     bin_centers = [0 + cut_pace/2 + i*cut_pace for i in range(int(1/cut_pace))]
     ax_significance.errorbar(bin_centers, significance, yerr=significance_err, 
@@ -311,8 +344,10 @@ def plot_purity(input_files, output_dir):
     process = {"h_score_tt_Wcb" : np.array([0.,0.]),
                "h_score_ttLF" : np.array([0.,0.]),
                "h_score_ttbb" : np.array([0.,0.]),
+               "h_score_tt2b" : np.array([0.,0.]),
                "h_score_ttbj" : np.array([0.,0.]),
                "h_score_ttcc" : np.array([0.,0.]),
+               "h_score_tt2c" : np.array([0.,0.]),
                "h_score_ttcj" : np.array([0.,0.])}
 
     for infile in input_files:
@@ -352,15 +387,17 @@ def plot_purity(input_files, output_dir):
     labels = [label.replace('tt_Wcb', 'Wcb') for label in labels]  # Replace 'ttWcb' with 'Wcb'
     labels = [label.replace('ttLF', 'tt+LF') for label in labels]  # Replace 'ttLF' with 'tt+LF'
     labels = [label.replace('ttbb', 'tt+bb') for label in labels]  # Replace 'ttbb' with 'tt+bb'
+    labels = [label.replace('tt2b', 'tt+2b') for label in labels]  # Replace 'tt2b' with 'tt+2b'
     labels = [label.replace('ttbj', 'tt+bj') for label in labels]  # Replace 'ttbj' with 'tt+bj'
     labels = [label.replace('ttcc', 'tt+cc') for label in labels]  # Replace 'ttcc' with 'tt+cc'
+    labels = [label.replace('tt2c', 'tt+2c') for label in labels]  # Replace 'tt2c' with 'tt+2c'
     labels = [label.replace('ttcj', 'tt+cj') for label in labels]  # Replace 'ttcj' with 'tt+cj'
 
     x = np.arange(len(labels))  # the label locations
     width = 0.35  # the width of the bars
 
     fig, ax = plt.subplots(figsize=(10, 10))
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", com="13.6")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
     bars = ax.bar(x, values, width, label='Purity')
     ax.set_ylabel('Purity')
     ax.set_xlabel('NN category')
@@ -393,19 +430,26 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
                "h_score_ttLF_SR" : np.array([0.,0.]),
                "h_score_ttbb_CR" : np.array([0.,0.]),
                "h_score_ttbb_SR" : np.array([0.,0.]),
+               "h_score_tt2b_CR" : np.array([0.,0.]),
+               "h_score_tt2b_SR" : np.array([0.,0.]),
                "h_score_ttbj_CR" : np.array([0.,0.]),
                "h_score_ttbj_SR" : np.array([0.,0.]),
                "h_score_ttcc_CR" : np.array([0.,0.]),
                "h_score_ttcc_SR" : np.array([0.,0.]),
+               "h_score_tt2c_CR" : np.array([0.,0.]),
+               "h_score_tt2c_SR" : np.array([0.,0.]),
                "h_score_ttcj_CR" : np.array([0.,0.]),
                "h_score_ttcj_SR" : np.array([0.,0.]),
                "h_fscore_ttLF_CR" : np.array([0.,0.]),
                "h_fscore_ttbb_CR" : np.array([0.,0.]),
+               "h_fscore_tt2b_CR" : np.array([0.,0.]),
                "h_fscore_ttbj_CR" : np.array([0.,0.]),
                "h_fscore_ttcc_CR" : np.array([0.,0.]),
+               "h_fscore_tt2c_CR" : np.array([0.,0.]),
                "h_fscore_ttcj_CR" : np.array([0.,0.])}
 
     for infile in input_files:
+        print()
         print(f"Processing file: {infile}")
 
         if "Data" in infile:
@@ -432,7 +476,7 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
             print(f"Processing histogram: {hist_name} for process: {proc_name} in region: {proc_region}")
 
             if "Wcb" in proc_name:
-                proc_name = "ttWcb"
+                proc_name = "ttbar-vcb"
 
             hist = root_file.Get(hist_name.replace('_' + proc_region, ''))
             if not hist or not isinstance(hist, ROOT.TH1):
@@ -441,7 +485,7 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
             # Clone the histogram to avoid issues when the file is closed
             hist_clone = hist.Clone()
             hist_clone.SetDirectory(0)
-            print("")
+            #print("")
             print("PROC NAME", proc_name)
             if proc_name in infile.split('h_')[-1]:
                 process[hist_name][0] += hist_clone.Integral() 
@@ -470,8 +514,10 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
     labels = [label.replace('tt_Wcb', 'Wcb') for label in labels]  # Replace 'tt_Wcb' with 'Wcb'
     labels = [label.replace('ttLF', 'tt+LF') for label in labels]  # Replace 'ttLF' with 'tt+LF'
     labels = [label.replace('ttbb', 'tt+bb') for label in labels]  # Replace 'ttbb' with 'tt+bb'
+    labels = [label.replace('tt2b', 'tt+2b') for label in labels]  # Replace 'tt2b' with 'tt+2b'
     labels = [label.replace('ttbj', 'tt+bj') for label in labels]  # Replace 'ttbj' with 'tt+bj'
     labels = [label.replace('ttcc', 'tt+cc') for label in labels]  # Replace 'ttcc' with 'tt+cc'
+    labels = [label.replace('tt2c', 'tt+2c') for label in labels]  # Replace 'ttcc' with 'tt+cc'
     labels = [label.replace('ttcj', 'tt+cj') for label in labels]  # Replace 'ttcj' with 'tt+cj'
     
 
@@ -479,7 +525,7 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
     width = 0.35  # the width of the bars
 
     fig, ax = plt.subplots(figsize=(10, 10))
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", com="13.6")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
     bars_CR = ax.bar(x - width/3, values_CR, width, label='CR')
     bars_fscores = ax.bar(x, values_CR_fscores, width, label='CR-fscores')
     bars_SR = ax.bar(x + width/3, values_SR, width, label='SR')
@@ -489,12 +535,13 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
     ax.legend(loc='upper right')#, bbox_to_anchor=(0.5, -0.15))
     if raw_evt_number:
         ax.set_ylabel('Events')
+        ax.set_yscale('log')
+        plt.ylim(1, max(max(values_CR), max(values_SR))*10)
     else:
         ax.set_ylabel('Purity')
+        plt.ylim(0, 1)
     ax.set_xlabel('NN category')
     plt.xticks(x, labels, rotation=-20 , ha='center')
-    if not raw_evt_number:
-        plt.ylim(0, 1)
 
     # Save the plot
     if raw_evt_number:
@@ -510,7 +557,7 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
 
 def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
     """
-    Plot the number of tt+bb and tt+bj events that populate the score and fscore histograms in the 4FS and 5FS cases.
+    Plot the number of tt+bb, tt+2b, and tt+bj events that populate the score and fscore histograms in the 4FS and 5FS cases.
     """
 
     # Dictionary to hold the weighted number of events for each process in a given category (first array element)
@@ -521,10 +568,14 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
                 "h_fscore_ttLF_5F" : np.array([0.,0.]),
                 "h_fscore_ttbb_4F" : np.array([0.,0.]),
                 "h_fscore_ttbb_5F" : np.array([0.,0.]),
+                "h_fscore_tt2b_4F" : np.array([0.,0.]),
+                "h_fscore_tt2b_5F" : np.array([0.,0.]),
                 "h_fscore_ttbj_4F" : np.array([0.,0.]),
                 "h_fscore_ttbj_5F" : np.array([0.,0.]),
                 "h_fscore_ttcc_4F" : np.array([0.,0.]),
                 "h_fscore_ttcc_5F" : np.array([0.,0.]),
+                "h_fscore_tt2c_4F" : np.array([0.,0.]),
+                "h_fscore_tt2c_5F" : np.array([0.,0.]),
                 "h_fscore_ttcj_4F" : np.array([0.,0.]),
                 "h_fscore_ttcj_5F" : np.array([0.,0.])}
 
@@ -579,11 +630,13 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
     labels = [label.replace('h_score_', '') for label in labels_4F]  # Remove 'h_score_' prefix for better readability
     labels = [label.replace('h_fscore_', '') for label in labels]  # Remove 'h_fscore_' prefix for better readability
     labels = [label.replace('_4F', '') for label in labels]  # Remove the "_4F" suffix
-    labels = [label.replace('tt_Wcb', 'Wcb') for label in labels]  # Replace 'ttWcb' with 'Wcb'
+    labels = [label.replace('tt_Wcb', 'Wcb') for label in labels]  # Replace 'tt_Wcb' with 'Wcb'
     labels = [label.replace('ttLF', 'tt+LF') for label in labels]  # Replace 'ttLF' with 'tt+LF'
     labels = [label.replace('ttbb', 'tt+bb') for label in labels]  # Replace 'ttbb' with 'tt+bb'
+    labels = [label.replace('tt2b', 'tt+2b') for label in labels]  # Replace 'ttbb' with 'tt+bb'
     labels = [label.replace('ttbj', 'tt+bj') for label in labels]  # Replace 'ttbj' with 'tt+bj'
     labels = [label.replace('ttcc', 'tt+cc') for label in labels]  # Replace 'ttcc' with 'tt+cc'
+    labels = [label.replace('tt2c', 'tt+2c') for label in labels]  # Replace 'ttcc' with 'tt+cc'
     labels = [label.replace('ttcj', 'tt+cj') for label in labels]  # Replace 'ttcj' with 'tt+cj'
 
     x = np.arange(len(labels_4F))  # the label locations
@@ -593,7 +646,7 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
                                        gridspec_kw={'height_ratios': [3, 1],  # proporzione 3:1 tra i plot
                                                    'hspace': 0.05})  # spazio minimo tra i plot
     
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", com="13.6")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
     
     # Plot principale sui dati
     bars4F = ax.bar(x - width/2, values_4F, width, label=process + ' 4FS', color='blue', alpha=0.7)
@@ -606,30 +659,12 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
     
     if raw_evt_number:
         ax.set_yscale('log')
-        ax.set_ylim(bottom=1e-1, top=1e6)
-        ax.set_ylabel('Events')
+        plt.ylim(1, max(max(values_4F), max(values_5F))*10)
     else:
-        ax.set_ylim(0, 1)
-        ax.set_ylabel('Purity')
-    
-    # Nascondi le etichette x del plot principale
-    ax.set_xticklabels([]) 
-    
-    # Plot del rapporto
-    ax_ratio.scatter(x, ratio_4Fto5F, color='green', s=80, zorder=3)  # s=80 sets the dot size, zorder=3 brings it to the front
-    
-    # Aggiungi una linea orizzontale a y=1
-    ax_ratio.axhline(y=1, color='black', linestyle='--', alpha=0.5)
-    
-    # Configurazione plot rapporto
-    ax_ratio.set_ylabel('4F/5F')
-    ax_ratio.set_ylim(0, 3)  # adatta il range come necessario
-    ax_ratio.set_xlabel('NN category')
-    ax.set_xticks(x)
-    ax_ratio.set_xticks(x)
-    ax_ratio.set_xlim(ax.get_xlim())
-    ax_ratio.set_xticklabels(labels, rotation=-20, ha='center')
-    
+        plt.ylim(0, 1)
+    ax.set_xlabel('NN category')
+    plt.xticks(x, labels, rotation=-20 , ha='center')
+
     # Save the plot
     if raw_evt_number:
         output_file_png = os.path.join(output_dir, f'raw_evt_number_{process}_4F5F.png')
@@ -645,15 +680,15 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
     print("")
     
 
-def compare_4F5F_vs_score(input_files, output_dir,):
+def compare_4F5F_vs_score(input_files, output_dir, process):
     """
-    Plot the number of tt+bb + tt+bj events that populate the tt_Wcb score histograms in the 4FS and 5FS cases.
+    Plot the number of tt+bb + tt+bj + tt+2c events that populate the tt_Wcb score histograms in the 4FS and 5FS cases.
     """
     # Create a figure with two subplots (main and ratio)
     fig, (ax, ax_ratio) = plt.subplots(2, 1, figsize=(10, 12), 
                                      gridspec_kw={'height_ratios': [3, 1], 'hspace': 0.05})
 
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109.08", com="13.6")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
     
     category = {"h_score_tt_Wcb_4F" : ROOT.TH1D("h_score_tt_Wcb_4F", "", 20, 0, 1),
                 "h_score_tt_Wcb_5F" : ROOT.TH1D("h_score_tt_Wcb_5F", "", 20, 0, 1)}
@@ -661,8 +696,12 @@ def compare_4F5F_vs_score(input_files, output_dir,):
     for infile in input_files:
         print(f"Processing file: {infile}")
 
-        if not "bb" in infile and not "bj" in infile:
-            continue
+        if process == "ttbx":
+            if not "bb" in infile and not "bj" in infile and not "2b" in infile:
+                continue
+        else:
+            if not process in infile:
+                continue
 
         # Open the file
         root_file = ROOT.TFile.Open(infile)
@@ -703,8 +742,12 @@ def compare_4F5F_vs_score(input_files, output_dir,):
     # Plotting in the upper panel
     ax.hist(bin_edges[:-1], bins=bin_edges, weights=y_4F, histtype='step', label='4F', linewidth=2)
     ax.hist(bin_edges[:-1], bins=bin_edges, weights=y_5F, histtype='step', label='5F', linewidth=2, linestyle='--')
+    ax.set_yscale('log')
+    ax.set_ylim(top=15*max(max(y_4F), max(y_5F)))
     ax.legend(loc='upper right')
     ax.set_ylabel('Events / 0.01')
+    ax.set_xlabel('') # Hide x-axis labels of the main plot
+    ax.set_xticks([])
 
     # Calculate the ratio
     ratio = category["h_score_tt_Wcb_4F"].Clone("ratio")
@@ -729,12 +772,11 @@ def compare_4F5F_vs_score(input_files, output_dir,):
     ax_ratio.set_xticks(x)
     ax_ratio.grid(True, alpha=0.4)     
     ax_ratio.set_xlim(ax.get_xlim()) # Same x-limits for both plots
-    ax_ratio.set_ylim(bottom=0, top=3)  
-    ax.set_xlabel('') # Hide x-axis labels of the main plot
+    ax_ratio.set_ylim(bottom=0, top=2)  
 
     # Save the plot
-    output_file_png = os.path.join(output_dir, f'compare_4F5F_vs_score_ttWcb.png')
-    output_file_pdf = os.path.join(output_dir, f'compare_4F5F_vs_score_ttWcb.pdf')
+    output_file_png = os.path.join(output_dir, f'compare_4F5F_vs_score_ttWcb_{process}.png')
+    output_file_pdf = os.path.join(output_dir, f'compare_4F5F_vs_score_ttWcb_{process}.pdf')
     #plt.tight_layout()
     plt.savefig(output_file_png)
     plt.savefig(output_file_pdf)
@@ -756,7 +798,7 @@ if __name__ == "__main__":
     parser.add_argument("--raw_evt_number", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to plot the raw event numbers.")
     parser.add_argument("--plot_4F5F", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to plot a 4F-5F comparison in every NN category.")
     parser.add_argument("--plot_4F5F_vs_score", nargs="?", const=1, type=bool, default=False, required=False, help="Decide whether to plot a 4F-5F comparison of ttbb+ttbj in the ttWcb score.")
-    parser.add_argument("--process", type=str, required=False, help="Decide if you want to plot ttbb or ttbj in the 4F-5F comparison.")
+    parser.add_argument("--process", type=str, required=False, help="Decide if you want to plot ttbb, tt2b, or ttbj in the 4F-5F comparison.")
 
     args = parser.parse_args()
 
@@ -764,13 +806,13 @@ if __name__ == "__main__":
     if args.multiRegion:
         input_files = glob.glob(f"{args.input_dir}/CR/*.root") + glob.glob(f"{args.input_dir}/SR/*.root") + glob.glob(f"{args.input_dir}/CRfscores/*.root")
     elif args.plot_4F5F:
-        input_files = glob.glob(f"{args.input_dir}/4F/*.root") + glob.glob(f"{args.input_dir}/5F/*.root")
+        input_files = glob.glob(f"{args.input_dir}/4FS/*.root") + glob.glob(f"{args.input_dir}/5FS/*.root")
     elif args.plot_4F5F_vs_score:
         input_files = glob.glob(f"{args.input_dir}/*4FS/*.root") + glob.glob(f"{args.input_dir}/*5FS/*.root")
     else:
         input_files = glob.glob(f"{args.input_dir}*.root")
 
-    input_processes = ["ttbar-vcb", "diboson", "singletop", "ttbar-powheg_ttLF", "ttbar-powheg-ttbb", "ttbar-powheg-tt2b", "ttbar-powheg-ttbj", "ttbar-powheg_ttcc", "ttbar-powheg_tt2c", "ttbar-powheg_ttcj", "w-fxfx"]
+    input_processes = ["ttbar-vcb", "diboson", "singletop", "ttH-ttV", "ttbar-powheg_ttLF", "ttbar-powheg_ttcc", "ttbar-powheg_tt2c", "ttbar-powheg_ttcj", "ttbb", "tt2b", "ttbj", "w-fxfx"]
     #input_processes = ["ttWcb", "diboson-tWZ", "singletop", "ttH-ttV", "ttbar-powheg_ttLF", "ttbb-withDPS", "ttbj-withDPS", "ttbar-powheg_ttcc", "ttbar-powheg_ttcj", "wjets"]
 
     # Create the output directory if it does not exist
@@ -788,7 +830,7 @@ if __name__ == "__main__":
     elif args.plot_4F5F:
         compare_FSs(input_files, args.output_dir, args.process, args.raw_evt_number)
     elif args.plot_4F5F_vs_score:
-        compare_4F5F_vs_score(input_files, args.output_dir)
+        compare_4F5F_vs_score(input_files, args.output_dir, args.process)
     elif args.significance:
             plot_significance(input_files, args.output_dir, args.hist_name, cut_pace=0.02, log=args.log)
     else:

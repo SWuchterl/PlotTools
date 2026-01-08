@@ -88,8 +88,10 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
     # Save the stack in a canvas and add a legend
     print(f"Saving stacked histograms as: {output_dir}{hist_name.replace('h_','')}.pdf/.png")
     canvas = CMS.cmsDiCanvas('canvas', x_low, x_high, 0, 1, 0.7, 1.3, hist_name.replace('h_',''), 'Events', 'Data/MC', square = CMS.kSquare, extraSpace=0.01, iPos=11)
+    #canvas = CMS.cmsDiCanvas('canvas', x_low, x_high, 0, 1, 0.7, 1.3, hist_name.replace('h_',''), 'Events', 'Sig/Bkg', square = CMS.kSquare, extraSpace=0.01, iPos=11)
     canvas.cd(1)
-    legend = CMS.cmsLeg(0.65,0.4,0.85,0.87, textSize=0.04) # Needs to be defined after the cmsCanvas or it won't be plotted
+    #Make this legend of two columns
+    legend = CMS.cmsLeg(0.55,0.5,0.85,0.87, textSize=0.04, columns=2) # Needs to be defined after the cmsCanvas or it won't be plotted
     if not sonly and not isBlind:
         legend.AddEntry(data_hist, "Data", "pe")
     legend.AddEntry(sig_hist, f"W#rightarrow cb #times {sig_norm}", "l")
@@ -110,7 +112,7 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
     #Draw the stack in log scale
     if log: 
         ROOT.gPad.SetLogy()
-        hist_from_canvas.GetYaxis().SetRangeUser(0.01,max(stack.GetHistogram().GetMaximum(),data_hist.GetMaximum()) * 10000)
+        hist_from_canvas.GetYaxis().SetRangeUser(0.1,max(stack.GetHistogram().GetMaximum(),data_hist.GetMaximum()) * 100000)
         if sonly:
             hist_from_canvas.GetYaxis().SetRangeUser(0.01,sig_hist.GetMaximum() * 1000)
 
@@ -141,6 +143,33 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
         CMS.cmsDrawLine(ref_line, lcolor = ROOT.kBlack, lstyle = ROOT.kDotted)
         ratio_from_canvas = CMS.GetcmsCanvasHist(canvas.GetPad(2))
         ratio_from_canvas.GetYaxis().SetRangeUser(0.5,1.5)
+
+
+        # Ratio plot
+        #canvas.cd(2)
+        #sig_hist_clone = sig_hist.Clone()
+        #bkg_hist_clone = bkg_hist.Clone()
+        #sig_hist_clone.Scale(1./sig_hist_clone.Integral())
+        #bkg_hist_clone.Scale(1./bkg_hist_clone.Integral())
+        #
+        #ratio = sig_hist_clone.Clone("ratio")
+        #ratio.Divide(bkg_hist_clone)
+
+        #for i in range(1,ratio.GetNbinsX()+1):
+        #    ratio.SetBinError(i, 0)
+
+        #yerr = ROOT.TGraphAsymmErrors()
+        #yerr.Divide(sig_hist_clone, bkg_hist_clone, 'pois') 
+        #for i in range(0,yerr.GetN()+1):
+        #    yerr.SetPointY(i,1)
+        #CMS.cmsDraw(yerr, "e2same0", lwidth = 100, msize = 0, fcolor = ROOT.kBlack, fstyle = 3004)  
+        #CMS.cmsDraw(ratio, "P", mcolor=ROOT.kBlack)
+        #ref_line = ROOT.TLine(x_low, 1, x_high, 1)
+        #CMS.cmsDrawLine(ref_line, lcolor = ROOT.kBlack, lstyle = ROOT.kDotted)
+        #ratio_from_canvas = CMS.GetcmsCanvasHist(canvas.GetPad(2))
+        ##ROOT.gPad.SetLogy()
+        #ratio_from_canvas.GetYaxis().SetRangeUser(0.,100.)
+
 
     # Save the canvas in pdf and png formats
     plot_name = f"{output_dir}{hist_name.replace('h_','')}" if not log else f"{output_dir}/log/{hist_name.replace('h_','')}"
@@ -190,7 +219,7 @@ if __name__ == "__main__":
 
     # Set plotting details
     CMS.SetExtraText("Work in progress")
-    CMS.SetLumi("109.08")
+    CMS.SetLumi("109")
     CMS.SetEnergy("13.6")
 
     # Get input files from the input_dir

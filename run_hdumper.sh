@@ -1,16 +1,46 @@
 #!/bin/sh
 # This script is used to run the hdumper to make histograms
 
-#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_17092025_2024_1L_Wcb/mc/ --output_dir histos_01102025/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --use5FS
-#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_17092025_2024_1L_Wcb/data/ --output_dir histos_01102025/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --use5FS
+python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_18122025_promptMVA_2024_1L_Wcb/mc/ --output_dir histos_18122025_promptMVA/noFlavTagSFs/  --tree_name Events --input_csv configs/hconfig.csv --year 2024
+python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_18122025_promptMVA_2024_1L_Wcb/data/ --output_dir histos_18122025_promptMVA/noFlavTagSFs/  --tree_name Events --input_csv configs/hconfig.csv --year 2024
 
 # Select ttLF < 0.1
-python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_17092025_2024_1L_Wcb/mc/ --output_dir histos_01102025/scores_ttLFm0p1/ --tree_name Events --input_csv configs/hconfig_scores.csv --year 2024 --add_selection "score_ttLF < 0.1"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_18122025_promptMVA_2024_1L_Wcb/mc/ --output_dir histos_18122025_promptMVA/ttLFm0p1/score_tt_Wcb/4FS/  --tree_name Events --input_csv configs/hconfig_minimal.csv --year 2024 --add_selection "score_ttLF < 0.1"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_18122025_promptMVA_2024_1L_Wcb/mc/ --output_dir histos_18122025_promptMVA/ttLFm0p1/score_tt_Wcb/5FS/  --tree_name Events --input_csv configs/hconfig_minimal.csv --year 2024 --add_selection "score_ttLF < 0.1" --use5FS
 
 # Plotting of the scores in the CR (no fscores defined) or in SR
-#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/29012025_2018_1L/mc/ --output_dir histos_07072025/ttLFm0p1/CR/  --tree_name Events --input_csv configs/hconfig_scores.csv --year 2018 --add_selection "score_ttLF < 0.1 && score_tt_Wcb > 0.6 && score_tt_Wcb < 0.85"
-#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/29012025_2018_1L/mc/ --output_dir histos_07072025/ttLFm0p1/SR/  --tree_name Events --input_csv configs/hconfig_scores.csv --year 2018 --add_selection "score_ttLF < 0.1 && score_tt_Wcb > 0.85"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb/ttLFm0p1/CR/  --tree_name Events --input_csv configs/hconfig_scores.csv --year 2024 --add_selection "score_ttLF < 0.1 && score_tt_Wcb < 0.8"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb/ttLFm0p1/SR/  --tree_name Events --input_csv configs/hconfig_scores.csv --year 2024 --add_selection "score_ttLF < 0.1 && score_tt_Wcb > 0.8"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb/ttLFm0p1/CRfscores/  --tree_name Events --input_csv configs/hconfig_fscores.csv --year 2024 --eventClassification
 
-# Use 5FS and select ttLF < 0.1
-#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/29012025_2018_1L/mc/ --output_dir histos_07072025/scores_ttLFm0p1_5FS/  --tree_name Events --input_csv configs/hconfig_scores.csv --year 2018 --add_selection "score_ttLF < 0.1" --use5FS
-#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/29012025_2018_1L/data/ --output_dir histos_07072025/scores_ttLFm0p1_5FS/  --tree_name Events --input_csv configs/hconfig_scores.csv --year 2018 --add_selection "score_ttLF < 0.1" --use5FS
+# Plotting of the 4FS and 5FS fscores
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb/ttLFm0p1/4FS/  --tree_name Events --input_csv configs/hconfig_fscores.csv --year 2024 --eventClassification
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb/ttLFm0p1/5FS/  --tree_name Events --input_csv configs/hconfig_fscores.csv --year 2024 --eventClassification --use5FS
+
+# Plot a bit of everything in different n_ak4, n_btag and n_ctag bins
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_njets4/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ak4 == 4"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_njets4/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ak4 == 4"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_njets5/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ak4 == 5"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_njets5/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ak4 == 5"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_njets6/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ak4 == 6"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_njets6/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ak4 == 6"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_njetsM6/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ak4 > 6"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_njetsM6/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ak4 > 6"
+
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_nbtag3/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_btagM == 3"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_nbtag3/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_btagM == 3"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_nbtag4/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_btagM == 4"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_nbtag4/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_btagM == 4"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_nbtag5/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_btagM == 5"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_nbtag5/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_btagM == 5"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_nbtagM5/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_btagM > 5"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_nbtagM5/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_btagM > 5"
+
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_nctag1/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ctagM == 1"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_nctag1/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ctagM == 1"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_nctag2/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ctagM == 2"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_nctag2/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ctagM == 2"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_nctag3/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ctagM == 3"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_nctag3/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ctagM == 3"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb_nctagM3/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ctagM > 3"
+#python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb_nctagM3/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "n_ctagM > 3"

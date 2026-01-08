@@ -3,7 +3,6 @@ import argparse
 import glob
 import csv
 import os
-import sys
 from colorama import Fore, Style 
 import numpy as np
 import multiprocessing as mp
@@ -15,7 +14,40 @@ ROOT.TTreeCache.SetLearnEntries(200)
 ROOT.gEnv.SetValue("TFile.AsyncPrefetching", 2)
 ROOT.TH1.SetDefaultSumw2(True)
 
-def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eventClassification, use5FS):
+def add_overflow_underflow(hist):
+    """
+    Add underflow (bin 0) to first bin and overflow (bin N+1) to last bin.
+    
+    Parameters:
+    - hist: ROOT.TH1 histogram
+    """
+    nbins = hist.GetNbinsX()
+    
+    # Add underflow to first bin
+    underflow = hist.GetBinContent(0)
+    underflow_err = hist.GetBinError(0)
+    first_bin = hist.GetBinContent(1)
+    first_bin_err = hist.GetBinError(1)
+    
+    hist.SetBinContent(1, first_bin + underflow)
+    hist.SetBinError(1, np.sqrt(first_bin_err**2 + underflow_err**2))
+    hist.SetBinContent(0, 0)
+    hist.SetBinError(0, 0)
+    
+    # Add overflow to last bin
+    overflow = hist.GetBinContent(nbins + 1)
+    overflow_err = hist.GetBinError(nbins + 1)
+    last_bin = hist.GetBinContent(nbins)
+    last_bin_err = hist.GetBinError(nbins)
+    
+    hist.SetBinContent(nbins, last_bin + overflow)
+    hist.SetBinError(nbins, np.sqrt(last_bin_err**2 + overflow_err**2))
+    hist.SetBinContent(nbins + 1, 0)
+    hist.SetBinError(nbins + 1, 0)
+    
+    return hist
+
+def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eventClassification, use5FS, count_events):
     """
     Processes a TTree, converts it to multiple TH1Ds for specified branches, and saves them to a ROOT file.
 
@@ -28,6 +60,7 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
     - selections: String containing common event preselection.
     - eventClassification: Boolean indicating whether to apply event classification.
     - use5FS: Boolean indicating whether to use 5-flavor scheme MC for ttbb and ttbj processes.
+    - count_events: Decide whether to count events for each selection (probably slows things down a bit).
     """
     print("")
 
@@ -82,8 +115,8 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
             .Define("ak4_4_eta",   "ak4_eta.size() > 3 ? ak4_eta[3] : 0")
 
     tt_file_names = ["ttbb-4f", "ttbb-dps", "ttbar-powheg"]
-    tt4f_strings = ["ttbb", "ttbj"]
-    tt_strings   = ["ttcc", "ttcj", "ttLF"]
+    tt4f_strings = ["ttbb", "ttbj", "tt2b"]
+    tt_strings   = ["ttcc", "ttcj", "tt2c", "ttLF"]
 
     # Assign event weight based on data taking year and process type
     weight = assign_event_weight(year, infile)
@@ -95,6 +128,10 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
         df = df.Define(weight_column, weight)
     else: # Keep the weight 1 for collision data
         df = df.Define(weight_column, "1")
+
+    # Initialize counters for events
+    local_total_MC_events = 0
+    local_events_in_category = {key: 0 for key in selections.keys() if not key == "base"}
 
     histograms = {}
     # Process each selection-output combinations
@@ -121,9 +158,15 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
             print(f"Applying additional selection for {infile}: {Fore.RED}{selection_name}{Style.RESET_ALL}")
             ttbar_event_selection = f"{selections[selection_name]}"
             df_selected = df.Filter(ttbar_event_selection)
-            print(f"Events passing additional ttbar selection: {df_selected.Count().GetValue()}")
+            if count_events:
+                print(f"Events passing additional ttbar selection: {df_selected.Count().GetValue()}")
         else:
             df_selected = df
+
+        if not "Data" in infile and not "data" in infile and not "base" in selection_name:
+            n_events = df_selected.Sum(weight_column).GetValue()
+            local_total_MC_events += n_events
+            local_events_in_category[selection_name] += n_events
 
         print(f"Applying selection: {Fore.GREEN}{selection_name}{Style.RESET_ALL}")
 
@@ -147,7 +190,9 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
             hist_key = (branch_name, selection_name)
             # Create histogram
             if eventClassification:
+                #n_bins = 20 # Make many bins for these histograms. We will adjust them later.
                 histograms[hist_key] = final_df[branch_name].Histo1D((f"h_{branch_name}", f"Histogram of {branch_name}", len(adhoc_binning[branch_name])-1, adhoc_binning[branch_name]), branch_name, weight_column)
+                #histograms[hist_key] = final_df[branch_name].Histo1D((f"h_{branch_name}", f"Histogram of {branch_name}", nbins, xmin, xmax), branch_name, weight_column)
             else:
                 histograms[hist_key] = final_df[branch_name].Histo1D((f"h_{branch_name}", f"Histogram of {branch_name}", nbins, xmin, xmax), branch_name, weight_column)
 
@@ -157,7 +202,8 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
     print(f"Materializing {len(histograms)} histograms...")
     materialized_hists = {}
     for key, hist_lazy in histograms.items():
-        materialized_hists[key] = hist_lazy.GetPtr()   
+        materialized_hists[key] = hist_lazy.GetPtr() 
+        materialized_hists[key] = add_overflow_underflow(materialized_hists[key]) 
 
     output_file_handles = {}
     for key, hist in materialized_hists.items():
@@ -171,15 +217,17 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
         output_file_handles[output_file].cd()
         hist.Write()
     
-    # Chiudi tutti i file
+    # Close all files
     for fOut in output_file_handles.values():
         fOut.Close()
 
     input_file.Close()
     print(f"{Fore.GREEN}Completed processing {infile}{Style.RESET_ALL}")
 
+    return (local_total_MC_events, local_events_in_category)
 
-def process_trees_parallel(input_files, output_files, tree_name, hist_configs, year, selections, eventClassification, use5FS):
+
+def process_trees_parallel(input_files, output_files, tree_name, hist_configs, year, selections, eventClassification, use5FS, count_events):
     """
     Basically a wrapper of process_tree to process multiple TTrees in parallel.
     """
@@ -191,11 +239,23 @@ def process_trees_parallel(input_files, output_files, tree_name, hist_configs, y
         year=year,
         selections=selections,
         eventClassification=eventClassification,
-        use5FS=use5FS
+        use5FS=use5FS,
+        count_events=count_events
     )
 
     with mp.Pool(processes=min(len(input_files), mp.cpu_count())) as pool:
-        pool.starmap(process_func, zip(input_files, output_files))
+        results = pool.starmap(process_func, zip(input_files, output_files))
+
+    # Aggregate results from all processes
+    total_MC_events = 0
+    events_in_category = {key: 0 for key in selections.keys() if not key == "base"}
+    
+    for local_total, local_category in results:
+        total_MC_events += local_total
+        for category, count in local_category.items():
+            events_in_category[category] += count
+    
+    return (total_MC_events, events_in_category)
 
 def read_csv(csv_file):
     """
@@ -280,7 +340,7 @@ if __name__ == "__main__":
     parser.add_argument("--electron", nargs="?", const=1, type=bool, default=False, required=False, help="Process electron channel only.")
     parser.add_argument("--muon", nargs="?", const=1, type=bool, default=False, required=False, help="Process muon channel only.")
     parser.add_argument("--add_selection", type=str, required=False, help="Additional selection to apply to all processes.")
-    parser.add_argument("--event_counting_file", type=str, required=False, help="File to save event counts for each selection.")
+    parser.add_argument("--count_events", nargs="?", const=1, type=bool, default=False, required=False, help="Count events for each selection.")
     parser.add_argument("--eventClassification", nargs="?", const=1, type=bool, default=False, required=False, help="Apply event classification selection.")
     parser.add_argument("--use5FS", nargs="?", const=1, type=bool, default=False, required=False, help="Use 5-flavor scheme.")
 
@@ -315,14 +375,15 @@ if __name__ == "__main__":
     use5FS = False
     if args.use5FS:
         use5FS = True
-        print(f"{Fore.GREEN}Using 5-flavor scheme for ttbb and ttbj processes.{Style.RESET_ALL}")
+        print(f"{Fore.GREEN}Using 5-flavor scheme for ttbb, tt2b, and ttbj processes.{Style.RESET_ALL}")
 
     # Apply additional selections if specified
     if args.add_selection:
         for key in selections.keys():
             selections[key] += f" && ({args.add_selection})"
 
-    process_trees_parallel(input_files, output_files, args.tree_name, hist_configs, args.year, selections, args.eventClassification, use5FS)
+    # Process the trees and get event counts
+    total_MC_events, events_in_category = process_trees_parallel(input_files, output_files, args.tree_name, hist_configs, args.year, selections, args.eventClassification, use5FS, args.count_events)
 
     # Make sure the previous step is completed before merging files
     ROOT.gSystem.Exec("sync")
@@ -334,8 +395,14 @@ if __name__ == "__main__":
     #merge_files(args.output_dir, ttV_list, "h_ttV.root")
 
     # We do not have ttH samples for 2024 yet
-    #ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttV.root"]
-    #merge_files(args.output_dir, ttH_list, "h_ttH-ttV.root")
+    ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttZ.root", "h_diboson.root", "h_singletop.root", "h_wjets.root"]
+    merge_files(args.output_dir, ttH_list, "h_others.root")
+
+    merge_files(args.output_dir, ["h_ttbb-4f_ttbb.root"], "h_ttbb.root")
+    merge_files(args.output_dir, ["h_ttbb-4f_tt2b.root"], "h_tt2b.root")
+    merge_files(args.output_dir, ["h_ttbb-4f_ttbj.root"], "h_ttbj.root")
+
+    merge_files(args.output_dir, ["h_ttbar-vcb.root"], "h_tt-vcb.root")
 
     # We do not have dps samples for 2024 yet
     #if use5FS:
@@ -354,3 +421,10 @@ if __name__ == "__main__":
     #merge_files(args.output_dir, diboson_list, "h_diboson-tWZ.root")
     data_list = ["h_singlee.root", "h_singlemu.root"]
     merge_files(args.output_dir, data_list, "h_Data.root")
+
+    if args.count_events:
+        print(f"{Fore.YELLOW}Total MC events after preselection: {total_MC_events}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Event counts in each category:{Style.RESET_ALL}")
+        for category, count in events_in_category.items():
+            print(f"{Fore.YELLOW} - {category}: {count}{Style.RESET_ALL}")
+            print(f"  --> Fraction: {count/total_MC_events:.4f}\n")

@@ -1,2 +1,2 @@
 #!/bin/sh
-python3 prepareDatacards.py --inputdir datacard_preparation_fullSyst/ --outdir datacards_fullSyst --year 2018 
+python3 prepareDatacardsNsig.py --inputdir datacard_preparation_centralVcb/ --outdir datacards_centralVcb_multiSignalModel_MCStats --year 2024 --doAutoMCStats
