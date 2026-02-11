@@ -27,8 +27,10 @@ class weights_and_constants:
         evtClassification_weights = self.weights_ttLFm0p1_and_ttWcbm0p8_centralVcb
 
         eventClassificationBaseSelection = "score_ttLF < 0.1"
-        SR_selection = "score_tt_Wcb > 0.8"
-        CR_selection = "score_tt_Wcb < 0.8"
+        #SR_selection = "score_tt_Wcb > 0.8"
+        #CR_selection = "score_tt_Wcb < 0.8"
+        SR_selection = "score_tt_Wcb > 0.7 && score_tt_Wcb < 0.8"
+        CR_selection = "score_tt_Wcb < 0.7"
         
         # ttbar categories used to define CR scores
         categories = ["ttbb", "tt2b", "ttbj", "ttcc", "tt2c", "ttcj", "ttLF"]

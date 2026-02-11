@@ -396,7 +396,7 @@ if __name__ == "__main__":
     #merge_files(args.output_dir, ttV_list, "h_ttV.root")
 
     # We do not have ttH samples for 2024 yet
-    ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttZ.root", "h_diboson.root", "h_singletop.root", "h_wjets.root"]
+    ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttZ.root", "h_ttW.root", "h_diboson.root", "h_singletop.root", "h_wjets.root"]
     merge_files(args.output_dir, ttH_list, "h_others.root")
 
     merge_files(args.output_dir, ["h_ttbb-4f_ttbb.root"], "h_ttbb.root")

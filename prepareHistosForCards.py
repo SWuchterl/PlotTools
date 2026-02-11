@@ -115,8 +115,8 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
                 hist_name = infile.split('/')[-1].replace('_tree.root','')
                 if any(x in infile for x in tt_file_names):
                     hist_name = selection_name
-                if "Data" in infile or "data" in infile:
-                    hist_name = "data_obs"
+                #if "Data" in infile or "data" in infile:
+                #    hist_name = "data_obs"
                 if not syst == "None":
                     hist_name = f"{hist_name}_{syst}"
 
@@ -129,7 +129,7 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
                     score, weight_column
                 )
 
-            if "Data" in infile: break # Do not continue with the systematic variations for collision data
+            if "Data" in infile or "data" in infile: break # Do not continue with the systematic variations for collision data
 
     # Write all histograms to their respective output files
     print(f"Materializing {len(histograms)} histograms...")
@@ -236,6 +236,24 @@ def assign_event_weight(year, infile, syst=""):
         weight = f"{weight}*{syst}"
     
     return weight
+
+def sum_data(output_files):
+    for outfile in output_files:
+        fIn = ROOT.TFile.Open(outfile, "UPDATE")
+        singlee_hist = fIn.Get("singlee")
+        singlemu_hist = fIn.Get("singlemu")
+        if not isinstance(singlee_hist, ROOT.TH1) or not isinstance(singlemu_hist, ROOT.TH1):
+            print(f"Error: 'singlee' or 'singlemu' in file '{outfile}' is not a histogram.")
+            continue
+        data_obs = singlee_hist.Clone("data_obs")
+        data_obs.SetDirectory(0)
+        data_obs.Add(singlemu_hist)
+        fIn.cd()
+        data_obs.Write("data_obs", ROOT.TObject.kOverwrite)
+        #delete the singlee and singlemu histograms to save space
+        fIn.Delete("singlee;*")
+        fIn.Delete("singlemu;*")
+        fIn.Close()
 
 
 if __name__ == "__main__":
@@ -400,3 +418,6 @@ if __name__ == "__main__":
                }
 
     process_trees_parallel(input_files, output_files, args.tree_name, args.year, selections, adhoc_selection, adhoc_binning, systematics)
+
+    sum_data(output_files)
+    print(f"All done!")
