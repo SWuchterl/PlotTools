@@ -104,10 +104,9 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
             # If weight is a complex expression, define it as a new column
             weight_column = f"weight_{syst}"
             if "data" not in infile and "Data" not in infile:
-                #print(f"Event weight: {Fore.GREEN}{weight}{Style.RESET_ALL}")
                 df_selected = df_selected.Define(weight_column, weight)
-            else: # Keep the weight == 1 for collision data
-                df_selected = df_selected.Define(weight_column, "1")
+            else: 
+                df_selected = df_selected.Define(weight_column, "(!jetVetoMapEventVeto)") # Apply jet veto map for data as well
 
             final_df = dict()
             for (score, adhoc_sel), outfile in zip(adhoc_selection.items(), output_files):
@@ -226,7 +225,8 @@ def assign_event_weight(year, infile, syst=""):
     """
     weight = "1"
     if year == 2024:
-        weight = "lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
+        #weight = "2.013*0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
+        weight = "0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
     if "ttbar" in infile:
         weight = f"{weight}*topptWeight"
     if "4f" in infile:

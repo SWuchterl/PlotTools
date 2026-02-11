@@ -77,7 +77,7 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
         raise ValueError(f"TTree '{tree_name}' not found in file '{infile}'.")
     
     # Optimize TTree reading
-    tree.SetCacheSize(100000000)  # 100MB cache instead of 100MB
+    tree.SetCacheSize(100000000)  # 100MB cache
     tree.AddBranchToCache("*", True)
 
     # Create RDataFrame from TTree
@@ -126,8 +126,8 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
     if not "data" in infile and not "Data" in infile: 
         print(f"Event weight: {weight}")
         df = df.Define(weight_column, weight)
-    else: # Keep the weight 1 for collision data
-        df = df.Define(weight_column, "1")
+    else: 
+        df = df.Define(weight_column, "(!jetVetoMapEventVeto)") # Set collision data weight to 1
 
     # Initialize counters for events
     local_total_MC_events = 0
@@ -285,7 +285,8 @@ def assign_event_weight(year, infile):
     """
     weight = "1"
     if year == 2018 or year == 2024:
-        weight = "lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
+        weight = "0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
+        #weight = "2.013*0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
     if "ttbar" in infile:
         weight = f"{weight}*topptWeight"
     if "4f" in infile:
@@ -402,7 +403,7 @@ if __name__ == "__main__":
     merge_files(args.output_dir, ["h_ttbb-4f_tt2b.root"], "h_tt2b.root")
     merge_files(args.output_dir, ["h_ttbb-4f_ttbj.root"], "h_ttbj.root")
 
-    merge_files(args.output_dir, ["h_ttbar-vcb.root"], "h_tt-vcb.root")
+    #merge_files(args.output_dir, ["h_ttbar-vcb.root"], "h_tt-vcb.root")
 
     # We do not have dps samples for 2024 yet
     #if use5FS:

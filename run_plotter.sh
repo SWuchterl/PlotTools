@@ -1,7 +1,7 @@
 #!/bin/sh
 # Preselection scores
-python3 plotter.py --input_dir histos_18122025_promptMVA/noFlavTagSFs/ --output_dir plots_18122025_promptMVA/noFlavTagSFs/ --sig_norm 100 --input_csv configs/hconfig.csv
-python3 plotter.py --input_dir histos_18122025_promptMVA/noFlavTagSFs/ --output_dir plots_18122025_promptMVA/noFlavTagSFs/ --sig_norm 100 --input_csv configs/hconfig.csv --log
+python3 plotter.py --input_dir histos_07012026/fscores_ttLFm0p1/ --output_dir plots_07012026/fscores_ttLFm0p1/ --sig_norm 5 --input_csv configs/hconfig_fscores.csv --blind
+python3 plotter.py --input_dir histos_07012026/fscores_ttLFm0p1/ --output_dir plots_07012026/fscores_ttLFm0p1/ --sig_norm 5 --input_csv configs/hconfig_fscores.csv --blind --log
 
 #python3 plotter.py --input_dir histos_centralVcb_njets4/ --output_dir plots_centralVcb_njets4/ --sig_norm 100 --input_csv configs/hconfig_scores.csv --log
 #python3 plotter.py --input_dir histos_centralVcb_njets5/ --output_dir plots_centralVcb_njets5/ --sig_norm 100 --input_csv configs/hconfig_scores.csv  --log

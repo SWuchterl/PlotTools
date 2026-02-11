@@ -1,4 +1,4 @@
 #!/bin/sh
 # This script is used to run the hdumper to make histograms with fscores (i.e., those to fit)
-python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/mc/ --output_dir histos_centralVcb/fscores_ttLFm0p1_rebinned/  --tree_name Events --input_csv configs/hconfig_fscores.csv --year 2024 --eventClassification
-python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_centralVcb_2024_1L_Wcb/data/ --output_dir histos_centralVcb/fscores_ttLFm0p1_rebinned/  --tree_name Events --input_csv configs/hconfig_fscores.csv --year 2024 --eventClassification 
+python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07012026_2024_1L_Wcb/mc/ --output_dir histos_07012026/fscores_ttLFm0p1/  --tree_name Events --input_csv configs/hconfig_fscores.csv --year 2024 --eventClassification
+python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07012026_2024_1L_Wcb/data/ --output_dir histos_07012026/fscores_ttLFm0p1/  --tree_name Events --input_csv configs/hconfig_fscores.csv --year 2024 --eventClassification 

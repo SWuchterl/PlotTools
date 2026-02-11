@@ -220,6 +220,7 @@ if __name__ == "__main__":
     # Set plotting details
     CMS.SetExtraText("Work in progress")
     CMS.SetLumi("109")
+    #CMS.SetLumi("219.5")
     CMS.SetEnergy("13.6")
 
     # Get input files from the input_dir

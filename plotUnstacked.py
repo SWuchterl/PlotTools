@@ -46,25 +46,25 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
         "ttcj": "tt+cj"
     }
     
-    # SALVA il process originale (prima della conversione)
-    process_key = process  # es. "ttcc"
-    process_label = process_name_beautifier.get(process, process)  # es. "tt+cc"
+    # Save original process name before conversion
+    process_key = process  # ex. "ttcc"
+    process_label = process_name_beautifier.get(process, process)  # ex. "tt+cc"
 
     # Loop through input files and plot histograms
     for infile in input_files:
 
-        # Estrai il nome del processo dal filename
+        # Exctract process name from file name
         proc_name_raw = os.path.basename(infile).replace('.root', '').replace('h_', '')
         
-        # Gestione caso speciale ttbb-4f
-        if "ttbb" in proc_name_raw:
-            proc_name_raw = proc_name_raw.split("_")[1]
+        # Special case handling for ttbb-4f
+        #if "ttbb" in proc_name_raw:
+        #    proc_name_raw = proc_name_raw.split("_")[1]
 
-        # CONFRONTA PRIMA DELLA CONVERSIONE per salvare hist_process
+        # Compare before conversion to save hist_process
         is_target_process = (proc_name_raw == process_key or process_key in proc_name_raw)
         is_wcb = "vcb" in proc_name_raw or "Wcb" in proc_name_raw
         
-        # Ora converti per il plotting
+        # Now convert for plotting
         proc_name_display = proc_name_raw
         for key, value in process_name_beautifier.items():
             if key in proc_name_raw:
@@ -102,7 +102,7 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
             hist_process = hist_clone.Clone(f"hist_{process_key}")
             hist_process.SetDirectory(0)
 
-        # Somma TUTTI i background (esclusi Wcb e Data)
+        # Sum ALL backgrounds (excluding Wcb and Data)
         if not is_wcb and "Data" not in infile:
             if sum_of_backgrounds is None:
                 sum_of_backgrounds = hist_clone.Clone("sum_of_backgrounds")
@@ -110,7 +110,7 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
             else:
                 sum_of_backgrounds.Add(hist_clone)
 
-        # Plotta SOLO Wcb e il processo target
+        # Plot ONLY Wcb and the target process
         if not is_wcb and not is_target_process:
             continue
 
@@ -476,7 +476,7 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
             print(f"Processing histogram: {hist_name} for process: {proc_name} in region: {proc_region}")
 
             if "Wcb" in proc_name:
-                proc_name = "ttbar-vcb"
+                proc_name = "tt-vcb"
 
             hist = root_file.Get(hist_name.replace('_' + proc_region, ''))
             if not hist or not isinstance(hist, ROOT.TH1):
@@ -659,11 +659,28 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
     
     if raw_evt_number:
         ax.set_yscale('log')
-        plt.ylim(1, max(max(values_4F), max(values_5F))*10)
+        ax.set_ylim(1, max(max(values_4F), max(values_5F))*100)
+        ax.set_ylabel('Events')
     else:
-        plt.ylim(0, 1)
-    ax.set_xlabel('NN category')
-    plt.xticks(x, labels, rotation=-20 , ha='center')
+        ax.set_ylim(0, 1)
+        ax.set_ylabel('Purity')
+
+    ax.set_xticklabels([]) 
+    
+    # Ratio
+    ax_ratio.scatter(x, ratio_4Fto5F, color='green', s=80, zorder=3)  # s=80 sets the dot size, zorder=3 brings it to the front
+    
+    # Horizontal line at y=1
+    ax_ratio.axhline(y=1, color='black', linestyle='--', alpha=0.5)
+    
+    # Ratio plot configuration  
+    ax_ratio.set_ylabel('4F/5F')
+    ax_ratio.set_ylim(0, 2) 
+    ax_ratio.set_xlabel('NN category')
+    ax.set_xticks(x)
+    ax_ratio.set_xticks(x)
+    ax_ratio.set_xlim(ax.get_xlim())
+    ax_ratio.set_xticklabels(labels, rotation=-20, ha='center')
 
     # Save the plot
     if raw_evt_number:
@@ -812,7 +829,7 @@ if __name__ == "__main__":
     else:
         input_files = glob.glob(f"{args.input_dir}*.root")
 
-    input_processes = ["ttbar-vcb", "diboson", "singletop", "ttH-ttV", "ttbar-powheg_ttLF", "ttbar-powheg_ttcc", "ttbar-powheg_tt2c", "ttbar-powheg_ttcj", "ttbb", "tt2b", "ttbj", "w-fxfx"]
+    input_processes = ["tt-vcb", "ttbar-powheg_ttLF", "ttbar-powheg_ttcc", "ttbar-powheg_tt2c", "ttbar-powheg_ttcj", "ttbb", "tt2b", "ttbj", "others"]
     #input_processes = ["ttWcb", "diboson-tWZ", "singletop", "ttH-ttV", "ttbar-powheg_ttLF", "ttbb-withDPS", "ttbj-withDPS", "ttbar-powheg_ttcc", "ttbar-powheg_ttcj", "wjets"]
 
     # Create the output directory if it does not exist
