@@ -212,7 +212,7 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
         output_file = tt_outfile_name if not "base" in selection_name else outfile
 
         if output_file not in output_file_handles:
-            output_file_handles[output_file] = ROOT.TFile(output_file, "UPDATE")
+            output_file_handles[output_file] = ROOT.TFile(output_file, "RECREATE")
 
         output_file_handles[output_file].cd()
         hist.Write()
@@ -285,7 +285,7 @@ def assign_event_weight(year, infile):
     """
     weight = "1"
     if year == 2018 or year == 2024:
-        weight = "0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
+        weight = "0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
         #weight = "2.013*0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
     if "ttbar" in infile:
         weight = f"{weight}*topptWeight"
@@ -348,8 +348,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Get input files from the input_dirs list
+    input_files = []
     for input_dir in args.input_dirs:
-        input_files = glob.glob(f"{input_dir}*.root")
+        input_files.extend(glob.glob(f"{input_dir}*.root"))
+    input_files = sorted(set(input_files))
 
     # Prepare list of output files based on the name of the input files
     output_files = prepare_output(args.output_dir, input_files)
@@ -383,6 +385,10 @@ if __name__ == "__main__":
         for key in selections.keys():
             selections[key] += f" && ({args.add_selection})"
 
+    print(f"{Fore.YELLOW}Final selections to be applied:{Style.RESET_ALL}")
+    for key, value in selections.items():
+        print(f"{Fore.YELLOW} - {key}: {value}{Style.RESET_ALL}")
+
     # Process the trees and get event counts
     total_MC_events, events_in_category = process_trees_parallel(input_files, output_files, args.tree_name, hist_configs, args.year, selections, args.eventClassification, use5FS, args.count_events)
 
@@ -396,7 +402,7 @@ if __name__ == "__main__":
     #merge_files(args.output_dir, ttV_list, "h_ttV.root")
 
     # We do not have ttH samples for 2024 yet
-    ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttZ.root", "h_ttW.root", "h_diboson.root", "h_singletop.root", "h_wjets.root"]
+    ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttZ.root", "h_diboson.root", "h_singletop.root", "h_wjets.root"]
     merge_files(args.output_dir, ttH_list, "h_others.root")
 
     merge_files(args.output_dir, ["h_ttbb-4f_ttbb.root"], "h_ttbb.root")

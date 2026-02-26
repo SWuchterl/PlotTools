@@ -1,7 +1,10 @@
 #!/bin/sh
-# Preselection scores
-python3 plotter.py --input_dir histos_07012026/fscores_ttLFm0p1/ --output_dir plots_07012026/fscores_ttLFm0p1/ --sig_norm 5 --input_csv configs/hconfig_fscores.csv --blind
-python3 plotter.py --input_dir histos_07012026/fscores_ttLFm0p1/ --output_dir plots_07012026/fscores_ttLFm0p1/ --sig_norm 5 --input_csv configs/hconfig_fscores.csv --blind --log
+# Preselection score
+python3 plotter.py --input_dir histos_07012026/allPlots/ --output_dir plots_07012026/allPlots/ --sig_norm 100 --input_csv configs/hconfig.csv --blind
+python3 plotter.py --input_dir histos_07012026/allPlots/ --output_dir plots_07012026/allPlots/log/ --sig_norm 100 --input_csv configs/hconfig.csv --blind --log
+
+#python3 plotter.py --input_dir histos_07012026/ttLFm0p1/allPlots/ --output_dir plots_07012026/ttLFm0p1_ttWcbm0p7/allPlots/ --sig_norm 5 --input_csv configs/hconfig.csv --blind
+#python3 plotter.py --input_dir histos_07012026/ttLFm0p1/allPlots/ --output_dir plots_07012026/ttLFm0p1_ttWcbm0p7/allPlots/ --sig_norm 5 --input_csv configs/hconfig.csv --blind --log
 
 #python3 plotter.py --input_dir histos_centralVcb_njets4/ --output_dir plots_centralVcb_njets4/ --sig_norm 100 --input_csv configs/hconfig_scores.csv --log
 #python3 plotter.py --input_dir histos_centralVcb_njets5/ --output_dir plots_centralVcb_njets5/ --sig_norm 100 --input_csv configs/hconfig_scores.csv  --log

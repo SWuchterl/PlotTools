@@ -10,6 +10,7 @@ parser.add_argument('--year', type=str, default='2024', help='Data taking year')
 parser.add_argument('--inputdir', type=str, required=True, help='Input directory for the analysis')
 parser.add_argument('--outdir', type=str, required=True, help='Output directory for the datacards')
 parser.add_argument('--doAutoMCStats', nargs="?", const=1, type=bool, default=False, required=False, help='Use AutoMCStats')
+parser.add_argument('--optimizeWSforFits', nargs="?", const=1, type=bool, default=False, required=False, help='Add workspace optimization options for fits. Not suitable for pre/postfit plots')
 args = parser.parse_args()
 
 year = args.year
@@ -135,7 +136,8 @@ for proc in tt_components_nodps:
 
 # Input files to extract shapes from
 inputfiles = {bin: "" for bin in bins}
-for dp, dn, filenames in os.walk(inputdir):
+print(f"INPUTDIR: {inputdir}")
+for dp, dn, filenames in os.walk(inputdir): # Careful: this will look into all subdirectories, make sure there are no other undesired root file is around
 
     for f in filenames:
         if f.endswith(".root"):
@@ -143,6 +145,8 @@ for dp, dn, filenames in os.walk(inputdir):
             if bin in bins:
                 fullpath = os.path.join(dp, f)
                 inputfiles[bin] = fullpath
+
+print(f"Input files {inputfiles}")
 
 # Output shapes file (will collect all the histograms with shape variations)
 outputShapesName = outputCardName.replace(".txt", "_shapes.root")
@@ -241,18 +245,41 @@ workspace_name = workspace_name.replace("/Vcb","/workspace_Vcb")
 print("Workspace name: " + workspace_name)
 
 
-command = "text2workspace.py " + outputCardName + " -o " + workspace_name + \
-    " -m 125.38 -v 0 -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel" + \
-    " --PO verbose --for-fits --no-wrappers --use-histsum --X-pack-asympows" + \
-    " --optimize-simpdf-constraints=cms --channel-masks" + \
-    " --PO 'map=.*/tt2b:xsec_tt2b[1,-1.,2.]'" + \
-    " --PO 'map=.*/ttbb:xsec_ttbb[1,-1.,2.]'" + \
-    " --PO 'map=.*/ttbj:xsec_ttbj[1,-1.,2.]'" + \
-    " --PO 'map=.*/ttcc:xsec_ttcc[1,-1.,2.]'" + \
-    " --PO 'map=.*/tt2c:xsec_tt2c[1,-1.,2.]'" + \
-    " --PO 'map=.*/ttcj:xsec_ttcj[1,-1.,2.]'" + \
-    " --PO 'map=.*/ttLF:xsec_ttLF[1,-1.,2.]'"+ \
-    " --PO 'map=.*/tt-vcb:rate_ttWcb=expr;;rate_ttWcb(\"@0*@0\",Vcb[1,-1.,3.])'"
+if args.optimizeWSforFits:
+    command = "text2workspace.py " + outputCardName + " -o " + workspace_name + \
+    " -m 125.38 -v 0" + \
+    " --for-fits --no-wrappers --use-histsum --X-pack-asympows" + \
+    " --optimize-simpdf-constraints=cms --channel-masks"
+else:
+    command = "text2workspace.py " + outputCardName + " -o " + workspace_name + \
+    " -m 125.38 -v 0 --channel-masks"
+
+#command = "text2workspace.py " + outputCardName + " -o " + workspace_name + \
+#    " -m 125.38 -v 0 -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel" + \
+#    " --PO verbose --for-fits --no-wrappers --use-histsum --X-pack-asympows" + \
+#    " --optimize-simpdf-constraints=cms --channel-masks" + \
+#    " --PO 'map=.*/tt-vcb:rate_ttWcb=expr;;rate_ttWcb(\"@0*@0\",Vcb[1,-1.,3.])'"+ \
+#    " --PO 'map=.*/tt2b:xsec_tt2b[1,-1.,2.]'" + \
+#    " --PO 'map=.*/ttbb:xsec_ttbb[1,-1.,2.]'" + \
+#    " --PO 'map=.*/ttbj:xsec_ttbj[1,-1.,2.]'" + \
+#    " --PO 'map=.*/ttcc:xsec_ttcc[1,-1.,2.]'" + \
+#    " --PO 'map=.*/tt2c:xsec_tt2c[1,-1.,2.]'" + \
+#    " --PO 'map=.*/ttcj:xsec_ttcj[1,-1.,2.]'" + \
+#    " --PO 'map=.*/ttLF:xsec_ttLF[1,-1.,2.]'"
+    
+#if args.doValidation:
+#    command = "text2workspace.py " + outputCardName + " -o " + workspace_name + \
+#        " -m 125.38 -v 0 -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel" + \
+#        " --PO verbose --for-fits --no-wrappers --use-histsum --X-pack-asympows" + \
+#        " --optimize-simpdf-constraints=cms --channel-masks" + \
+#        " --PO 'map=.*/tt2b:xsec_tt2b[1,-1.,2.]'" + \
+#        " --PO 'map=.*/ttbb:xsec_ttbb[1,-1.,2.]'" + \
+#        " --PO 'map=.*/ttbj:xsec_ttbj[1,-1.,2.]'" + \
+#        " --PO 'map=.*/ttcc:xsec_ttcc[1,-1.,2.]'" + \
+#        " --PO 'map=.*/tt2c:xsec_tt2c[1,-1.,2.]'" + \
+#        " --PO 'map=.*/ttcj:xsec_ttcj[1,-1.,2.]'" + \
+#        " --PO 'map=.*/ttLF:xsec_ttLF[1,-1.,2.]'"+ \
+#        " --PO 'map=.*/tt-vcb:xsec_ttWcb[1,-1.,2.]'"   
 
 
 #command = "text2workspace.py " + outputCardName + " -o " + workspace_name + " -m 125.38 -v 0 -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel --PO verbose --channel-masks --PO 'map=.*/ttbb:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttbj:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttcc:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttcj:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttLF:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttWcb:rate_ttWcb=expr;;rate_ttWcb(\"@0*@1*@1*1./(0.00085*(1.-@1*@1)+1.)\",rate_tt,rate_ratio[1,-1.,2.])'"

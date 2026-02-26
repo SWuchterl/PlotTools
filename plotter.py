@@ -131,13 +131,11 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
             if(ratio.GetBinContent(i)):
                 ratio.SetBinError(i, math.sqrt(data_hist.GetBinContent(i))/bkg_hist.GetBinContent(i))
             else:
-                ratio.SetBinError(i, 10^(-99))
+                ratio.SetBinError(i, 10**(-99))
 
-        yerr = ROOT.TGraphAsymmErrors()
-        yerr.Divide(data_hist, bkg_hist, 'pois') 
-        for i in range(0,yerr.GetN()+1):
-            yerr.SetPointY(i,1)
-        CMS.cmsDraw(yerr, "e2same0", lwidth = 100, msize = 0, fcolor = ROOT.kBlack, fstyle = 3004)  
+        prediction_ratio = bkg_hist.Clone()
+        prediction_ratio.Divide(bkg_hist)
+        CMS.cmsDraw(prediction_ratio, "e2same0", lwidth = 100, msize = 0, fcolor = ROOT.kBlack, fstyle = 3004)  
         CMS.cmsDraw(ratio, "E1X0", mcolor=ROOT.kBlack)
         ref_line = ROOT.TLine(x_low, 1, x_high, 1)
         CMS.cmsDrawLine(ref_line, lcolor = ROOT.kBlack, lstyle = ROOT.kDotted)
@@ -158,11 +156,9 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
         #for i in range(1,ratio.GetNbinsX()+1):
         #    ratio.SetBinError(i, 0)
 
-        #yerr = ROOT.TGraphAsymmErrors()
-        #yerr.Divide(sig_hist_clone, bkg_hist_clone, 'pois') 
-        #for i in range(0,yerr.GetN()+1):
-        #    yerr.SetPointY(i,1)
-        #CMS.cmsDraw(yerr, "e2same0", lwidth = 100, msize = 0, fcolor = ROOT.kBlack, fstyle = 3004)  
+        #prediction_ratio = bkg_hist.Clone()
+        #prediction_ratio.Divide(bkg_hist)
+        #CMS.cmsDraw(prediction_ratio, "e2same0", lwidth = 100, msize = 0, fcolor = ROOT.kBlack, fstyle = 3004)  
         #CMS.cmsDraw(ratio, "P", mcolor=ROOT.kBlack)
         #ref_line = ROOT.TLine(x_low, 1, x_high, 1)
         #CMS.cmsDrawLine(ref_line, lcolor = ROOT.kBlack, lstyle = ROOT.kDotted)
