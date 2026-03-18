@@ -21,7 +21,8 @@ if not os.path.exists(outdir):
     os.makedirs(outdir)
 
 channel = "SL"
-bkgs = ["singletop", "ttbb", "ttbj", "tt2b", "ttcc", "ttcj", "tt2c", "ttLF", "wjets", "ttZ", "ttW,", "diboson", "ttHbb", "ttHcc"] #"ttbb-dps" and "ttW" whenever ready
+# Keep only processes that are currently produced in shapes files.
+bkgs = bkgs = ["singletop", "ttbb", "ttbj", "tt2b", "ttcc", "ttcj", "tt2c", "ttLF", "wjets", "ttZ", "ttW", "diboson", "ttHbb", "ttHcc"]
 signal = ["tt-vcb"]
 tt_components = ['tt-vcb','ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'ttLF'] #'ttbb-dps' whenever ready
 tt_components_nodps = ['ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj',  'tt2c', 'ttLF']
@@ -82,24 +83,14 @@ else:
 # PDF/Scale uncertainties on xsec
 if year == '2024':
     cb.cp().AddSyst(cb, 'CMS_lumi_13p6TeV_2024', 'lnN', ch.SystMap()(1.016)),
-    cb.cp().process(['singletop']).AddSyst(cb, 'QCDscale_singletop', 'lnN', ch.SystMap()((1.031, 1 - 0.021)))
-
-    cb.cp().process(tt_components).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.024, 1 - 0.035)))
-    cb.cp().process(tt_components).AddSyst(cb, 'BFWqq', 'lnN', ch.SystMap()((1.003)))
-    cb.cp().process(tt_components).AddSyst(cb, 'BFWlnu', 'lnN', ch.SystMap()((1.002)))
     cb.cp().process(signal).AddSyst(cb, 'effi', 'lnN', ch.SystMap()((1.002)))
-    cb.cp().process(['ttW']).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.255, 1 - 0.164)))
-    cb.cp().process(['ttZ']).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.081, 1 - 0.093)))
-    cb.cp().process(ttH_modes).AddSyst(cb, 'QCDscale_ttH', 'lnN', ch.SystMap()((1.058, 1 - 0.092)))
-    cb.cp().process(signal).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.081, 1 - 0.093))) 
-    cb.cp().process(['wjets']).AddSyst(cb, 'QCDscale_V', 'lnN', ch.SystMap()(1.038))
-    cb.cp().process(ttH_modes).AddSyst(cb, 'pdf_Higgs_ttH', 'lnN', ch.SystMap()(1.036))
-    cb.cp().process(['wjets']).AddSyst(cb, 'pdf_qqbar', 'lnN', ch.SystMap()((1.008, 1 - 0.004)))
-    cb.cp().process(['singletop']).AddSyst(cb, 'pdf_qg', 'lnN', ch.SystMap()(1.028))
-    cb.cp().process(tt_components).AddSyst(cb, 'pdf_gg', 'lnN', ch.SystMap()(1.042))
-    cb.cp().process(['ttW']).AddSyst(cb, 'pdf_qqbar', 'lnN', ch.SystMap()(1.036))
-    cb.cp().process(['ttZ']).AddSyst(cb, 'pdf_gg', 'lnN', ch.SystMap()(1.035))
-    cb.cp().process(signal).AddSyst(cb, 'pdf_qg', 'lnN', ch.SystMap()(1.028))
+    cb.cp().process(['ttW']).AddSyst(cb, 'norm_ttW', 'lnN', ch.SystMap()((1.068, 1. - 0.068))) # 0.75+-0.05(scale)+-0.01(PDF) pb / PRL 131 (2023) 231901
+    cb.cp().process(['ttZ']).AddSyst(cb, 'norm_ttZ', 'lnN', ch.SystMap()((1.085, 1. - 0.096))) # 0.86 +0.07 -0.08 (scale)+-0.02(PDF) pb / EPJC 80 (2020) 428
+    #Find appropriate uncertainties for the following lnN nuisances
+    ttH_modes_present = [p for p in ttH_modes if p in bkgs]
+    cb.cp().process(ttH_modes_present).AddSyst(cb, 'norm_ttH', 'lnN', ch.SystMap()((1.058,     1 - 0.092)))
+    cb.cp().process(['diboson']).AddSyst(cb, 'norm_diboson', 'lnN', ch.SystMap()((1.038)))
+    cb.cp().process(['wjets']).AddSyst(cb, 'norm_wjets', 'lnN', ch.SystMap()(1.038))
 
 for proc in tt_components_nodps:
     cb.cp().process([proc]).AddSyst(cb, f"xsec_{proc}", 'rateParam', ch.SystMap()(1.0))
