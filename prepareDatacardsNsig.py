@@ -21,12 +21,10 @@ if not os.path.exists(outdir):
     os.makedirs(outdir)
 
 channel = "SL"
-bkgs = ["singletop", "ttbb", "ttbj", "tt2b", "ttcc", "ttcj", "tt2c", "ttLF", "wjets", "ttZ", "diboson", "ttHbb", "ttHcc"] #"ttbb-dps" and "ttW" whenever ready
+bkgs = ["singletop", "ttbb", "ttbj", "tt2b", "ttcc", "ttcj", "tt2c", "ttLF", "wjets", "ttZ", "ttW,", "diboson", "ttHbb", "ttHcc"] #"ttbb-dps" and "ttW" whenever ready
 signal = ["tt-vcb"]
 tt_components = ['tt-vcb','ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'ttLF'] #'ttbb-dps' whenever ready
-tt_components_nobb = ['ttcc', 'ttcj', 'tt2c','ttLF']
 tt_components_nodps = ['ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj',  'tt2c', 'ttLF']
-tt_components_nodpsnoLF = ['ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj', 'tt2c']
 ttH_modes = ['ttHbb', 'ttHcc']
 all_procs = bkgs + signal
 
@@ -93,35 +91,15 @@ if year == '2024':
     cb.cp().process(['ttW']).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.255, 1 - 0.164)))
     cb.cp().process(['ttZ']).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.081, 1 - 0.093)))
     cb.cp().process(ttH_modes).AddSyst(cb, 'QCDscale_ttH', 'lnN', ch.SystMap()((1.058, 1 - 0.092)))
-    cb.cp().process(signal).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.081, 1 - 0.093))) # Fix this number
-    cb.cp().process(['w-fxfx']).AddSyst(cb, 'QCDscale_V', 'lnN', ch.SystMap()(1.038))
+    cb.cp().process(signal).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.081, 1 - 0.093))) 
+    cb.cp().process(['wjets']).AddSyst(cb, 'QCDscale_V', 'lnN', ch.SystMap()(1.038))
     cb.cp().process(ttH_modes).AddSyst(cb, 'pdf_Higgs_ttH', 'lnN', ch.SystMap()(1.036))
-    cb.cp().process(['w-fxfx']).AddSyst(cb, 'pdf_qqbar', 'lnN', ch.SystMap()((1.008, 1 - 0.004)))
+    cb.cp().process(['wjets']).AddSyst(cb, 'pdf_qqbar', 'lnN', ch.SystMap()((1.008, 1 - 0.004)))
     cb.cp().process(['singletop']).AddSyst(cb, 'pdf_qg', 'lnN', ch.SystMap()(1.028))
     cb.cp().process(tt_components).AddSyst(cb, 'pdf_gg', 'lnN', ch.SystMap()(1.042))
     cb.cp().process(['ttW']).AddSyst(cb, 'pdf_qqbar', 'lnN', ch.SystMap()(1.036))
     cb.cp().process(['ttZ']).AddSyst(cb, 'pdf_gg', 'lnN', ch.SystMap()(1.035))
-    cb.cp().process(signal).AddSyst(cb, 'pdf_qg', 'lnN', ch.SystMap()(1.028)) # Fix this number
-
-    #cb.cp().AddSyst(cb, 'CMS_trigEff%s', 'lnN', ch.SystMap()(1.015)),
-
-
-#############################
-#      Rate parameters      #
-#############################
-fractions = {
-    'ttbb': 0.0039195607,
-    'ttbj': 0.018511502,
-    'ttcc': 0.0088098647,
-    'ttcj': 0.067400737,
-    'ttLF': 1-(0.0039195607+0.018511502+0.0088098647+0.067400737)
-    }
-
-f_ttbb = fractions['ttbb']
-f_ttbj = fractions['ttbj']
-f_ttcc = fractions['ttcc']
-f_ttcj = fractions['ttcj']
-f_ttLF = fractions['ttLF']
+    cb.cp().process(signal).AddSyst(cb, 'pdf_qg', 'lnN', ch.SystMap()(1.028))
 
 for proc in tt_components_nodps:
     cb.cp().process([proc]).AddSyst(cb, f"xsec_{proc}", 'rateParam', ch.SystMap()(1.0))
@@ -154,12 +132,24 @@ print("Output file name: " + outputShapesName)
 
 shapeSysts = {
     'CMS_pileup_%s' % year: all_procs,
+    'CMS_trigEff%s' % year: all_procs,
+    'CMS_muEff%s' % year: all_procs,
+    'CMS_elEff%s' % year: all_procs,
+    'CMS_elSmear%s' % year: all_procs,
+    'CMS_elScale%s' % year: all_procs,
+    'CMS_muSmear%s' % year: all_procs,
+    'CMS_muScale%s' % year: all_procs,
     #'CMS_flavTag_PS_isr_ttbar_%s' % year: all_procs,
     #'CMS_flavTag_PS_fsr_ttbar_%s' % year: all_procs,
     #'CMS_flavTag_PS_isr_wjets_%s' % year: all_procs,
     #'CMS_flavTag_PS_fsr_wjets_%s' % year: all_procs,
-    #'CMS_flavTag_xsec_wjets_c_%s' % year: all_procs,
-    #'CMS_flavTag_xsec_wjets_b_%s' % year: all_procs,
+    'CMS_flavTag_stat_%s' %year: all_procs,
+    'CMS_flavTag_xsec_ttbar_c_': all_procs,
+    'CMS_flavTag_xsec_ttbar_b_': all_procs,
+    'CMS_flavTag_xsec_wjets_c_': all_procs,
+    'CMS_flavTag_xsec_wjets_b_': all_procs,
+    'CMS_flavTag_xsec_zjets_c_': all_procs,
+    'CMS_flavTag_xsec_zjets_b_': all_procs,
     #'CMS_flavTag_JER%s' % year: all_procs,
     #'CMS_flavTag_JES%s' % year: all_procs,
     #'CMS_flavTag_PU_%s' % year: all_procs,
@@ -167,39 +157,36 @@ shapeSysts = {
     #'CMS_flavTag_LHE_muR_ttbar_%s' % year: all_procs,
     #'CMS_flavTag_LHE_muF_wjets_%s' % year: all_procs,
     #'CMS_flavTag_LHE_muR_wjets_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavB_C0_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavB_C1_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavB_C2_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavB_C3_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavB_C4_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavB_B0_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavB_B1_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavB_B2_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavB_B3_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavB_B4_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavC_C0_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavC_C1_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavC_C2_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavC_C3_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavC_C4_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavC_B0_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavC_B1_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavC_B2_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavC_B3_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavC_B4_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavL_C0_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavL_C1_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavL_C2_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavL_C3_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavL_C4_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavL_B0_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavL_B1_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavL_B2_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavL_B3_%s' % year: all_procs,
-    #'CMS_flavTag_Stat_flavL_B4_%s' % year: all_procs,
-    'CMS_trigEff%s' % year: all_procs,
-    'CMS_muEff%s' % year: all_procs,
-    'CMS_elEff%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_C0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_C1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_C2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_C3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_C4_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_B0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_B1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_B2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_B3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavB_B4_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_C0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_C1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_C2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_C3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_C4_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_B0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_B1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_B2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_B3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavC_B4_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_C0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_C1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_C2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_C3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_C4_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_B0_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_B1_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_B2_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_B3_%s' % year: all_procs,
+    'CMS_flavTag_Stat_flavL_B4_%s' % year: all_procs,
     #'CMS_topHdampWeight%s' % year: tt_components_nobb,
 }
 
