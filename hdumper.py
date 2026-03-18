@@ -285,7 +285,8 @@ def assign_event_weight(year, infile):
     """
     weight = "1"
     if year == 2018 or year == 2024:
-        weight = "0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
+        weight = "(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
+        #weight = "0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
         #weight = "2.013*0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
     if "ttbar" in infile:
         weight = f"{weight}*topptWeight"
@@ -359,7 +360,7 @@ if __name__ == "__main__":
     # Prepare histogram configurations for each branch
     hist_configs = read_csv(args.input_csv)
 
-    selections = {"base": "n_ak4>=4 && (n_btagM+n_ctagM)>=3 && n_btagM>=1",
+    selections = {"base": "n_ak4>=4 && (n_btagM+n_ctagM)>=3 && n_btagM>=1", #"base": "n_ak4>=4 && (n_btagM+n_ctagM)>=3 && n_btagM>=1 && n_ctagT>=1"
                  "ttbb" : "genEventClassifier==9",
                  "ttbj" : "genEventClassifier==7",
                  "tt2b" : "genEventClassifier==8",
@@ -402,7 +403,7 @@ if __name__ == "__main__":
     #merge_files(args.output_dir, ttV_list, "h_ttV.root")
 
     # We do not have ttH samples for 2024 yet
-    ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttZ.root", "h_diboson.root", "h_singletop.root", "h_wjets.root"]
+    ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttZ.root", "h_ttW.root", "h_diboson.root", "h_singletop.root", "h_wjets.root"]
     merge_files(args.output_dir, ttH_list, "h_others.root")
 
     merge_files(args.output_dir, ["h_ttbb-4f_ttbb.root"], "h_ttbb.root")

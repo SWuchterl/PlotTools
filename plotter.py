@@ -91,7 +91,7 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
     #canvas = CMS.cmsDiCanvas('canvas', x_low, x_high, 0, 1, 0.7, 1.3, hist_name.replace('h_',''), 'Events', 'Sig/Bkg', square = CMS.kSquare, extraSpace=0.01, iPos=11)
     canvas.cd(1)
     #Make this legend of two columns
-    legend = CMS.cmsLeg(0.55,0.5,0.85,0.87, textSize=0.04, columns=2) # Needs to be defined after the cmsCanvas or it won't be plotted
+    legend = CMS.cmsLeg(0.5,0.5,0.85,0.87, textSize=0.04, columns=2) # Needs to be defined after the cmsCanvas or it won't be plotted
     if not sonly and not isBlind:
         legend.AddEntry(data_hist, "Data", "pe")
     legend.AddEntry(sig_hist, f"W#rightarrow cb #times {sig_norm}", "l")
@@ -120,7 +120,8 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
     if not sonly and not isBlind:
         bkg_hist = stack.GetStack().Last()
         err_hist = bkg_hist.Clone()
-        CMS.cmsDraw(err_hist, "e2same0", lcolor = 335, lwidth = 1, msize = 0, fcolor = ROOT.kBlack, fstyle = 3004) 
+        CMS.cmsDraw(err_hist, "e2same0", lcolor = 335, lwidth = 1, msize = 0, fcolor = ROOT.kBlack, fstyle = 3004)
+        legend.AddEntry(err_hist, "Stat. Unc.", "f") 
 
         # Ratio plot
         canvas.cd(2)
@@ -215,8 +216,8 @@ if __name__ == "__main__":
 
     # Set plotting details
     CMS.SetExtraText("Work in progress")
-    CMS.SetLumi("109")
-    #CMS.SetLumi("219.5")
+    CMS.SetLumi("110")
+    #CMS.SetLumi("220")
     CMS.SetEnergy("13.6")
 
     # Get input files from the input_dir

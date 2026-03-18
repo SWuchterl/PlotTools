@@ -181,7 +181,7 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
     ax.text(0.65, 0.77, '$N_{\mathrm{jet}} > 3$' + '\n' + '$N_{\mathrm{bjet}} > 0$' + '\n' + '$N_{\mathrm{b/cjet}} > 2$', 
              transform=ax.transAxes, fontsize=18, verticalalignment='top')
 
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="110", com="13.6")
     
     # Save the plot
     output_file_png = os.path.join(output_dir, f'unstacked_{hist_name}_{process_label.replace("+", "")}.png')
@@ -286,7 +286,7 @@ def plot_significance(input_files, output_dir, hist_name, cut_pace, log=False):
         ax.set_yscale('log')
         ax.set_ylim(top=15*max(max(y_signal), max(y_bkg)), bottom=1e-1)
     ax.legend()
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="110", com="13.6")
 
     bin_centers = [0 + cut_pace/2 + i*cut_pace for i in range(int(1/cut_pace))]
     ax_significance.errorbar(bin_centers, significance, yerr=significance_err, 
@@ -397,7 +397,7 @@ def plot_purity(input_files, output_dir):
     width = 0.35  # the width of the bars
 
     fig, ax = plt.subplots(figsize=(10, 10))
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="110", com="13.6")
     bars = ax.bar(x, values, width, label='Purity')
     ax.set_ylabel('Purity')
     ax.set_xlabel('NN category')
@@ -525,7 +525,7 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
     width = 0.35  # the width of the bars
 
     fig, ax = plt.subplots(figsize=(10, 10))
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="110", com="13.6")
     bars_CR = ax.bar(x - width/3, values_CR, width, label='CR')
     bars_fscores = ax.bar(x, values_CR_fscores, width, label='CR-fscores')
     bars_SR = ax.bar(x + width/3, values_SR, width, label='SR')
@@ -646,7 +646,7 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
                                        gridspec_kw={'height_ratios': [3, 1],  # proporzione 3:1 tra i plot
                                                    'hspace': 0.05})  # spazio minimo tra i plot
     
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="110", com="13.6")
     
     # Plot principale sui dati
     bars4F = ax.bar(x - width/2, values_4F, width, label=process + ' 4FS', color='blue', alpha=0.7)
@@ -705,7 +705,7 @@ def compare_4F5F_vs_score(input_files, output_dir, process):
     fig, (ax, ax_ratio) = plt.subplots(2, 1, figsize=(10, 12), 
                                      gridspec_kw={'height_ratios': [3, 1], 'hspace': 0.05})
 
-    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="109", com="13.6")
+    hep.cms.label("Work in progress", loc=2, ax=ax, lumi="110", com="13.6")
     
     category = {"h_score_tt_Wcb_4F" : ROOT.TH1D("h_score_tt_Wcb_4F", "", 20, 0, 1),
                 "h_score_tt_Wcb_5F" : ROOT.TH1D("h_score_tt_Wcb_5F", "", 20, 0, 1)}

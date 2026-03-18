@@ -1,7 +1,13 @@
 #!/bin/sh
 # This script is used to run the hdumper to make histograms
-python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07012026_2024_1L_Wcb/mc/ --output_dir histos_07012026/allPlots/ --tree_name Events --input_csv configs/hconfig.csv --year 2024 
-python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07012026_2024_1L_Wcb/data/ --output_dir histos_07012026/allPlots/ --tree_name Events --input_csv configs/hconfig.csv --year 2024
+PROD_VERSION=14032026
+CONFIG_FILE=configs/hconfig.csv
+EXTRA_NAME=
+OUTPUT_DIR=histos_$PROD_VERSION/$EXTRA_NAME/
+YEAR=2024
+
+python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_14032026_2024_1L_Wcb/mc/ --output_dir $OUTPUT_DIR --tree_name Events --input_csv $CONFIG_FILE --year $YEAR 
+python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_14032026_2024_1L_Wcb/data/ --output_dir $OUTPUT_DIR --tree_name Events --input_csv $CONFIG_FILE --year $YEAR
 
 #python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07012026_2024_1L_Wcb/mc/ --output_dir histos_07012026/ttLFm0p1_ttWcbm0p7/allPlots/  --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "score_ttLF < 0.1 && score_tt_Wcb < 0.7"
 #python3 hdumper.py --input_dirs /eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07012026_2024_1L_Wcb/data/ --output_dir histos_07012026/ttLFm0p1_ttWcbm0p7/allPlots/ --tree_name Events --input_csv configs/hconfig.csv --year 2024 --add_selection "score_ttLF < 0.1 && score_tt_Wcb < 0.7"

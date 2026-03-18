@@ -223,6 +223,7 @@ def plot_unrolled(input_files, output_dir, sig_norm=1.0, log=False, blind=False,
         bkg_hist = stack.GetStack().Last()
         err_hist = bkg_hist.Clone()
         CMS.cmsDraw(err_hist, "e2same0", lcolor=335, lwidth=1, msize=0, fcolor=ROOT.kBlack, fstyle=3004)
+        legend.AddEntry(err_hist, "Stat. Unc.", "f")
 
         canvas.cd(2)
         ratio = data_hist.Clone("ratio")
@@ -273,8 +274,8 @@ def main():
 
     # Set plotting details
     CMS.SetExtraText("Work in progress")
-    CMS.SetLumi("109")
-    #CMS.SetLumi("219.5")
+    CMS.SetLumi("110")
+    #CMS.SetLumi("220")
     CMS.SetEnergy("13.6")
     
     # Get input files from the input_dir

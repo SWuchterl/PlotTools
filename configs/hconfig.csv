@@ -8,8 +8,10 @@ score_ttcc, 20, 0., 1.
 score_tt2c, 20, 0., 1.
 score_ttbj, 20, 0., 1.
 n_ak4, 10, 3.5, 13.5
-n_btagM, 8, 0.5, 8.5
-n_ctagM, 8, 0.5, 8.5
+n_btagM, 8, -0.5, 7.5
+n_ctagM, 8, -0.5, 7.5
+n_btagT, 7, -0.5, 6.5
+n_ctagT, 7, -0.5, 6.5
 ak4_pt, 50, 0., 1000.
 ak4_phi, 50, -3.14, 3.14
 ak4_eta, 80, -4., 4.
