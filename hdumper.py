@@ -127,7 +127,7 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
         print(f"Event weight: {weight}")
         df = df.Define(weight_column, weight)
     else: 
-        df = df.Define(weight_column, "(!jetVetoMapEventVeto)") # Set collision data weight to 1
+        df = df.Define(weight_column, "1") # Set collision data weight to 1
 
     # Initialize counters for events
     local_total_MC_events = 0

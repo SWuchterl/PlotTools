@@ -25,6 +25,8 @@ channel = "SL"
 bkgs = bkgs = ["singletop", "ttbb", "ttbj", "tt2b", "ttcc", "ttcj", "tt2c", "ttLF", "wjets", "ttZ", "ttW", "diboson", "ttHbb", "ttHcc"]
 signal = ["tt-vcb"]
 tt_components = ['tt-vcb','ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'ttLF'] #'ttbb-dps' whenever ready
+tt_components_extended = ['tt-vcb','ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'ttLF', "ttZ", "ttW", "ttHbb", "ttHcc"] #'ttbb-dps' whenever ready
+tt_components_nobb = ['tt-vcb', 'ttcc', 'ttcj', 'ttLF'] #'ttbb-dps' whenever ready
 tt_components_nodps = ['ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj',  'tt2c', 'ttLF']
 ttH_modes = ['ttHbb', 'ttHcc']
 all_procs = bkgs + signal
@@ -83,7 +85,7 @@ else:
 # PDF/Scale uncertainties on xsec
 if year == '2024':
     cb.cp().AddSyst(cb, 'CMS_lumi_13p6TeV_2024', 'lnN', ch.SystMap()(1.016)),
-    cb.cp().process(signal).AddSyst(cb, 'effi', 'lnN', ch.SystMap()((1.002)))
+    #cb.cp().process(signal).AddSyst(cb, 'effi', 'lnN', ch.SystMap()((1.002)))
     cb.cp().process(['ttW']).AddSyst(cb, 'norm_ttW', 'lnN', ch.SystMap()((1.068, 1. - 0.068))) # 0.75+-0.05(scale)+-0.01(PDF) pb / PRL 131 (2023) 231901
     cb.cp().process(['ttZ']).AddSyst(cb, 'norm_ttZ', 'lnN', ch.SystMap()((1.085, 1. - 0.096))) # 0.86 +0.07 -0.08 (scale)+-0.02(PDF) pb / EPJC 80 (2020) 428
     #Find appropriate uncertainties for the following lnN nuisances
@@ -123,24 +125,22 @@ print("Output file name: " + outputShapesName)
 
 shapeSysts = {
     'CMS_pileup_%s' % year: all_procs,
-    'CMS_trigEff%s' % year: all_procs,
-    'CMS_muEff%s' % year: all_procs,
-    'CMS_elEff%s' % year: all_procs,
-    'CMS_elSmear%s' % year: all_procs,
-    'CMS_elScale%s' % year: all_procs,
-    'CMS_muSmear%s' % year: all_procs,
-    'CMS_muScale%s' % year: all_procs,
+    'CMS_trigEff_%s' % year: all_procs,
+    'CMS_muEff_%s' % year: all_procs,
+    'CMS_elEff_%s' % year: all_procs,
+    'CMS_elSmear_%s' % year: all_procs,
+    'CMS_elScale_%s' % year: all_procs,
+    'CMS_muSmear_%s' % year: all_procs,
+    'CMS_muScale_%s' % year: all_procs,
     #'CMS_flavTag_PS_isr_ttbar_%s' % year: all_procs,
     #'CMS_flavTag_PS_fsr_ttbar_%s' % year: all_procs,
     #'CMS_flavTag_PS_isr_wjets_%s' % year: all_procs,
     #'CMS_flavTag_PS_fsr_wjets_%s' % year: all_procs,
-    'CMS_flavTag_stat_%s' %year: all_procs,
-    'CMS_flavTag_xsec_ttbar_c_': all_procs,
-    'CMS_flavTag_xsec_ttbar_b_': all_procs,
-    'CMS_flavTag_xsec_wjets_c_': all_procs,
-    'CMS_flavTag_xsec_wjets_b_': all_procs,
-    'CMS_flavTag_xsec_zjets_c_': all_procs,
-    'CMS_flavTag_xsec_zjets_b_': all_procs,
+    'CMS_flavTag_xsec_ttbar': all_procs,
+    'CMS_flavTag_xsec_wjets_c': all_procs,
+    'CMS_flavTag_xsec_wjets_b': all_procs,
+    'CMS_flavTag_xsec_zjets_c': all_procs,
+    'CMS_flavTag_xsec_zjets_b': all_procs,
     #'CMS_flavTag_JER%s' % year: all_procs,
     #'CMS_flavTag_JES%s' % year: all_procs,
     #'CMS_flavTag_PU_%s' % year: all_procs,
@@ -178,16 +178,24 @@ shapeSysts = {
     'CMS_flavTag_Stat_flavL_B2_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavL_B3_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavL_B4_%s' % year: all_procs,
-    #'CMS_topHdampWeight%s' % year: tt_components_nobb,
 }
 
-shapeSysts = {}
+#Above here, perhaps it should be something like  'LHE_muF_%s%s' % year %tt_component: tt_components, for tt_component in tt_components
 
 for syst in shapeSysts:
     print(f"Adding systematic: {syst} for processes: {shapeSysts[syst]}")
     cb.cp().process(shapeSysts[syst]).AddSyst(cb, syst, 'shape', ch.SystMap()(1.0))
             
-
+#Now add process-dependent shape systematics (only for certain processes)
+for proc in tt_components_nobb:
+    syst_name = f"topHdampWeight_{proc}_{year}"
+    print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
+    cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
+for proc in tt_components_extended:
+    for var in ['LHE_muF', 'LHE_muR', 'PS_ISR_muR', 'PS_FSR_muR']:
+        syst_name = f"{var}_{proc}_{year}"
+        print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
+        cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
 
 for bin in bins:
     print(f"Extracting shapes for bin {bin} from file {inputfiles[bin]}")
@@ -207,7 +215,6 @@ cb_fixed.ParseDatacard(outputCardName)
 
 systematics_nuisances = sorted(
     s for s in cb_fixed.syst_name_set()
-    if not s.startswith('rate_')
 )
 if len(systematics_nuisances) > 0:
     cb_fixed.AddDatacardLineAtEnd('systematics group = ' + ' '.join(systematics_nuisances))

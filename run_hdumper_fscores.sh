@@ -1,6 +1,6 @@
 #!/bin/sh
 # This script is used to run the hdumper to make histograms with fscores (i.e., those to fit)
-PROD_VERSION=14032026
+PROD_VERSION=14032026_v3
 CONFIG_FILE=configs/hconfig_fscores.csv
 EXTRA_NAME=fscores_ttLFm0p1_rebinned
 OUTPUT_DIR=histos_$PROD_VERSION/$EXTRA_NAME/

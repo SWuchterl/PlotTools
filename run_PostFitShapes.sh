@@ -18,8 +18,7 @@ combine -M MultiDimFit workspace_Vcb_SL_2024.root \
     --robustFit 1
 
 # Now run a combineTool command
-PostFitShapesFromWorkspace \
-    --workspace higgsCombineTest.MultiDimFit.mH125.38.root \
+PostFitShapesFromWorkspace --workspace higgsCombineTest.MultiDimFit.mH125.38.root \
     --fitresult multidimfitTest.root:fit_mdf \
     --postfit \
     --output pre_and_post_fit.root
