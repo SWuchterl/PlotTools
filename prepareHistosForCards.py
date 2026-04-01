@@ -106,7 +106,7 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
             if "data" not in infile and "Data" not in infile:
                 df_selected = df_selected.Define(weight_column, weight)
             else: 
-                df_selected = df_selected.Define(weight_column, "1.") # Apply jet veto map for data as well
+                df_selected = df_selected.Define(weight_column, "1") # Apply jet veto map for data as well
 
             final_df = dict()
             for (score, adhoc_sel), outfile in zip(adhoc_selection.items(), output_files):
@@ -413,14 +413,23 @@ if __name__ == "__main__":
                    "CMS_flavTag_Stat_flavL_B4_%sDown" % year : "flavTagWeight_Stat_flavL_B4_DOWN/flavTagWeight",
                    "topHdampWeight_%sUp" % year : "topHdampWeightUp*renormWeight_hdampML_up",
                    "topHdampWeight_%sDown" % year : "topHdampWeightDown*renormWeight_hdampML_down",
-                   "LHE_muF_%sUp" % year : "LHEScaleWeight[5]*LHEScaleWeightNorm[5]",
-                   "LHE_muF_%sDown" % year : "LHEScaleWeight[3]*LHEScaleWeightNorm[3]",
-                   "LHE_muR_%sUp" % year : "LHEScaleWeight[7]*LHEScaleWeightNorm[7]",
-                   "LHE_muR_%sDown" % year : "LHEScaleWeight[1]*LHEScaleWeightNorm[1]",
-                   "PS_ISR_muR_%sUp" % year : "PSWeight[0]*PSWeightNorm[0]",
-                   "PS_ISR_muR_%sDown" % year : "PSWeight[2]*PSWeightNorm[2]",
-                   "PS_FSR_muR_%sUp" % year : "PSWeight[1]*PSWeightNorm[1]",
-                   "PS_FSR_muR_%sDown" % year : "PSWeight[3]*PSWeightNorm[3]",
+                   "LHE_muF_v1_%sUp" % year : "LHEScaleWeight[5]*LHEScaleWeightNorm[5]",
+                   "LHE_muF_v1_%sDown" % year : "LHEScaleWeight[3]*LHEScaleWeightNorm[3]",
+                   "LHE_muR_v1_%sUp" % year : "LHEScaleWeight[7]*LHEScaleWeightNorm[7]",
+                   "LHE_muR_v1_%sDown" % year : "LHEScaleWeight[1]*LHEScaleWeightNorm[1]",
+                   "PS_ISR_v1_%sUp" % year : "PSWeight[0]*PSWeightNorm[0]",
+                   "PS_ISR_v1_%sDown" % year : "PSWeight[2]*PSWeightNorm[2]",
+                   "PS_FSR_v1_%sUp" % year : "PSWeight[1]*PSWeightNorm[1]",
+                   "PS_FSR_v1_%sDown" % year : "PSWeight[3]*PSWeightNorm[3]",
+                   #Now add the same variations but with a custom, tt+X-specific normalization, to be used for shape variations in the ttbar background
+                   "LHE_muF_v2_%sUp" % year : "LHEScaleWeight[5]*renormWeight_muF_up",
+                   "LHE_muF_v2_%sDown" % year : "LHEScaleWeight[3]*renormWeight_muF_down",
+                   "LHE_muR_v2_%sUp" % year : "LHEScaleWeight[7]*renormWeight_muR_up",
+                   "LHE_muR_v2_%sDown" % year : "LHEScaleWeight[1]*renormWeight_muR_down",
+                   "PS_ISR_v2_%sUp" % year : "PSWeight[0]*renormWeight_isr_up",
+                   "PS_ISR_v2_%sDown" % year : "PSWeight[2]*renormWeight_isr_down",
+                   "PS_FSR_v2_%sUp" % year : "PSWeight[1]*renormWeight_fsr_up",
+                   "PS_FSR_v2_%sDown" % year : "PSWeight[3]*renormWeight_fsr_down",
                    #"CMS_flavTag_PS_isr_ttbar_%sUp" % year : "flavTagWeight_PSWeightISR_ttbar_UP/flavTagWeight",
                    #"CMS_flavTag_PS_isr_ttbar_%sDown" % year : "flavTagWeight_PSWeightISR_ttbar_DOWN/flavTagWeight",
                    #"CMS_flavTag_PS_fsr_ttbar_%sUp" % year : "flavTagWeight_PSWeightFSR_ttbar_UP/flavTagWeight",
@@ -453,7 +462,7 @@ if __name__ == "__main__":
                    #"CMS_flavTag_LHE_muR_zjets_%sDown" % year : "flavTagWeight_LHEScaleWeight_muR_zjets_DOWN/flavTagWeight",
                }
     
-    perProcessSysts = ["topHdampWeight", "LHE_muF", "LHE_muR", "PS_ISR_muR", "PS_FSR_muR"]
+    perProcessSysts = ["topHdampWeight", "LHE_muF", "LHE_muR", "PS_ISR", "PS_FSR"]
 
     nprocs = args.nproc if args.nproc else len(input_files)
 

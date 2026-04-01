@@ -18,7 +18,9 @@ combine -M MultiDimFit workspace_Vcb_SL_2024.root \
     --robustFit 1
 
 # Now run a combineTool command
+# The --skip-proc-errs option skips the per-process error calculation. Errors for TotalProcs/TotalBkg/TotalSig are still calculated
 PostFitShapesFromWorkspace --workspace higgsCombineTest.MultiDimFit.mH125.38.root \
     --fitresult multidimfitTest.root:fit_mdf \
     --postfit \
+    --skip-proc-errs \
     --output pre_and_post_fit.root

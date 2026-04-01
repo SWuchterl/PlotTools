@@ -22,13 +22,15 @@ if not os.path.exists(outdir):
 
 channel = "SL"
 # Keep only processes that are currently produced in shapes files.
-bkgs = bkgs = ["singletop", "ttbb", "ttbj", "tt2b", "ttcc", "ttcj", "tt2c", "ttLF", "wjets", "ttZ", "ttW", "diboson", "ttHbb", "ttHcc"]
+bkgs = ["singletop", "ttbb", "ttbj", "tt2b", "ttcc", "ttcj", "tt2c", "ttLF", "wjets", "ttZ", "ttW", "diboson", "ttHbb", "ttHcc"]
 signal = ["tt-vcb"]
-tt_components = ['tt-vcb','ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'ttLF'] #'ttbb-dps' whenever ready
-tt_components_extended = ['tt-vcb','ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'ttLF', "ttZ", "ttW", "ttHbb", "ttHcc"] #'ttbb-dps' whenever ready
-tt_components_nobb = ['tt-vcb', 'ttcc', 'ttcj', 'ttLF'] #'ttbb-dps' whenever ready
-tt_components_nodps = ['ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj',  'tt2c', 'ttLF']
-ttH_modes = ['ttHbb', 'ttHcc']
+tt_components = ['tt-vcb','ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'tt2c', 'ttLF'] #'ttbb-dps' whenever ready
+tt_components_mainBkg = ['ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'tt2c', 'ttLF'] #'ttbb-dps' whenever ready
+tt_components_extended = ['tt-vcb', 'ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'tt2c', 'ttLF', "ttZ", "ttW", "ttHbb", "ttHcc"] #'ttbb-dps' whenever ready
+tt_components_reduced = ['tt-vcb', "ttZ", "ttW", "ttHbb", "ttHcc"] 
+tt_components_nobb = ['tt-vcb', 'ttcc', 'ttcj', 'tt2c', 'ttLF'] #'ttbb-dps' whenever ready
+tt_components_nodps = ['ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj', 'tt2c', 'ttLF']
+ttH_components = ['ttHbb', 'ttHcc']
 all_procs = bkgs + signal
 
 
@@ -89,8 +91,7 @@ if year == '2024':
     cb.cp().process(['ttW']).AddSyst(cb, 'norm_ttW', 'lnN', ch.SystMap()((1.068, 1. - 0.068))) # 0.75+-0.05(scale)+-0.01(PDF) pb / PRL 131 (2023) 231901
     cb.cp().process(['ttZ']).AddSyst(cb, 'norm_ttZ', 'lnN', ch.SystMap()((1.085, 1. - 0.096))) # 0.86 +0.07 -0.08 (scale)+-0.02(PDF) pb / EPJC 80 (2020) 428
     #Find appropriate uncertainties for the following lnN nuisances
-    ttH_modes_present = [p for p in ttH_modes if p in bkgs]
-    cb.cp().process(ttH_modes_present).AddSyst(cb, 'norm_ttH', 'lnN', ch.SystMap()((1.058,     1 - 0.092)))
+    cb.cp().process(ttH_components).AddSyst(cb, 'norm_ttH', 'lnN', ch.SystMap()((1.058,     1 - 0.092)))
     cb.cp().process(['diboson']).AddSyst(cb, 'norm_diboson', 'lnN', ch.SystMap()((1.038)))
     cb.cp().process(['wjets']).AddSyst(cb, 'norm_wjets', 'lnN', ch.SystMap()(1.038))
 
@@ -191,8 +192,14 @@ for proc in tt_components_nobb:
     syst_name = f"topHdampWeight_{proc}_{year}"
     print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
     cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
-for proc in tt_components_extended:
-    for var in ['LHE_muF', 'LHE_muR', 'PS_ISR_muR', 'PS_FSR_muR']:
+for proc in tt_components_reduced:
+    for var in ['LHE_muF_v1', 'LHE_muR_v1', 'PS_ISR_v1', 'PS_FSR_v1']:
+        syst_name = f"{var}_{proc}_{year}"
+        print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
+        cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
+#For ttbar and ttbb backgrounds, use a special subprocess-dependent renormalization
+for proc in tt_components_mainBkg:
+    for var in ['LHE_muF_v2', 'LHE_muR_v2', 'PS_ISR_v2', 'PS_FSR_v2']:
         syst_name = f"{var}_{proc}_{year}"
         print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
         cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
