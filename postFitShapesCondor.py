@@ -12,6 +12,8 @@ parser.add_argument("--out-file", "-o", type=str, required=True, help="Base outp
 parser.add_argument("--cmssw-base", type=str, default=os.environ.get("CMSSW_BASE", ""), help="Path to local CMSSW release to initialize on Condor (defaults to $CMSSW_BASE).")
 parser.add_argument("--categories", "-c",nargs="+", default=["Vcb_catWcb_SR","Vcb_catBB_CR","Vcb_catBJ_CR","Vcb_cat2B_CR","Vcb_catCC_CR","Vcb_catCJ_CR","Vcb_cat2C_CR","Vcb_catLF_CR"], help="Categories to process, one Condor job per category (e.g. Vcb_catBJ_CR Vcb_catWcb_SR).")
 parser.add_argument("--skip-proc-errs", action="store_true", help="Pass --skip-proc-errs to PostFitShapesFromWorkspace.")
+parser.add_argument("--postfit", action="store_true", help="Pass --postfit to PostFitShapesFromWorkspace.")
+
 
 args = parser.parse_args()
 
@@ -30,6 +32,7 @@ os.makedirs(log_dir, exist_ok=True)
 run_script = os.path.join(input_dir, "run_postfit_shapes.sh")
 submit_file = os.path.join(input_dir, "postfit_shapes.sub")
 skip_proc_errs = skip_proc_errs_value(args.skip_proc_errs)
+postfit = "1" if args.postfit else "0"
 
 run_script_content = """#!/bin/bash
 set -euo pipefail
@@ -65,7 +68,7 @@ combine -M MultiDimFit \"{workspace}\" \\
   --cminPreScan \\
   --cminPreFit 1 \\
   --X-rtd FAST_VERTICAL_MORPH \\
-  --robustFit 1
+  --robustFit 1 \\
   -n \"${{category}}\"
 
 out_file=\"{out_base}\"
@@ -74,16 +77,17 @@ out_file=\"${{out_file%.root}}_${{category}}.root\"
 PostFitShapesFromWorkspace \\
   --workspace higgsCombine\"${{category}}\".MultiDimFit.mH125.38.root \\
   --fitresult multidimfit\"${{category}}\".root:fit_mdf \\
-  --postfit \\
+  --postfit {postfit} \\
   --skip-proc-errs {skip_proc_errs} \\
   --selected-bins \"${{category}}\" \\
   --output \"${{out_file}}\"
 """.format(
     cmssw_src=cmssw_src,
     workdir=input_dir,
-    workspace=os.path.abspath(args.workspace),
+    workspace=os.path.join(input_dir, args.workspace),
     out_base=args.out_file,
     skip_proc_errs=skip_proc_errs,
+    postfit=postfit,
 )
 
 with open(run_script, "w") as f:
@@ -115,6 +119,7 @@ transfer_output_files = ""
 +AccountingGroup = "group_u_CMST3.all"
 
 MY.WantOS = "el9"
+
 queue category from (
 {categories}
 )

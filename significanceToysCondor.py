@@ -61,7 +61,7 @@ combine -M HybridNew \"{workspace}\" \\
 """.format(
     cmssw_src=cmssw_src,
     workdir=input_dir,
-    workspace=os.path.abspath(args.datacard),
+    workspace=os.path.join(input_dir, args.datacard),
     toys=args.toys,
     iterations=args.iter,
 )
