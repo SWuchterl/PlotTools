@@ -6,10 +6,11 @@ import argparse
 from fixNegativeBins import fixNegativeBins
 
 parser = argparse.ArgumentParser(description='Prepare datacards for Vcb analysis')
-parser.add_argument('--year', type=str, default='2018', help='Data taking year')
+parser.add_argument('--year', type=str, default='2024', help='Data taking year')
 parser.add_argument('--inputdir', type=str, required=True, help='Input directory for the analysis')
 parser.add_argument('--outdir', type=str, required=True, help='Output directory for the datacards')
 parser.add_argument('--doAutoMCStats', nargs="?", const=1, type=bool, default=False, required=False, help='Use AutoMCStats')
+parser.add_argument('--optimizeWSforFits', nargs="?", const=1, type=bool, default=False, required=False, help='Add workspace optimization options for fits. Not suitable for pre/postfit plots')
 args = parser.parse_args()
 
 year = args.year
@@ -20,10 +21,16 @@ if not os.path.exists(outdir):
     os.makedirs(outdir)
 
 channel = "SL"
-bkgs = ["singletop", "ttbb-dps", "ttbb", "ttbj", "ttcc", "ttcj", "ttLF", "wjets", "ttZ", "ttW", "diboson", "ttHbb", "ttHcc"]
-signal = ["ttWcb"]
-tt_components = ['ttbb', 'ttbj', 'ttbb-dps' ,'ttcc', 'ttcj', 'ttLF']
-ttH_modes = ['ttHbb', 'ttHcc']
+# Keep only processes that are currently produced in shapes files.
+bkgs = ["singletop", "ttbb", "ttbj", "tt2b", "ttcc", "ttcj", "tt2c", "ttLF", "wjets", "ttZ", "ttW", "diboson", "ttHbb", "ttHcc"]
+signal = ["tt-vcb"]
+tt_components = ['tt-vcb','ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'tt2c', 'ttLF'] #'ttbb-dps' whenever ready
+tt_components_mainBkg = ['ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'tt2c', 'ttLF'] #'ttbb-dps' whenever ready
+tt_components_extended = ['tt-vcb', 'ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'tt2c', 'ttLF', "ttZ", "ttW", "ttHbb", "ttHcc"] #'ttbb-dps' whenever ready
+tt_components_reduced = ['tt-vcb', "ttZ", "ttW", "ttHbb", "ttHcc"] 
+tt_components_nobb = ['tt-vcb', 'ttcc', 'ttcj', 'tt2c', 'ttLF'] #'ttbb-dps' whenever ready
+tt_components_nodps = ['ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj', 'tt2c', 'ttLF']
+ttH_components = ['ttHbb', 'ttHcc']
 all_procs = bkgs + signal
 
 
@@ -40,11 +47,17 @@ datacard_dict = {"Vcb_catWcb_SR" : {
                 "Vcb_catBJ_CR" : {
                 "distribution" : "fscore_ttbj",
                 },
+                "Vcb_cat2B_CR" : {
+                "distribution" : "fscore_tt2b",
+                },
                 "Vcb_catCC_CR" : {
                 "distribution" : "fscore_ttcc",
                 },
                 "Vcb_catCJ_CR" : {
                 "distribution" : "fscore_ttcj",
+                },
+                "Vcb_cat2C_CR" : {
+                "distribution" : "fscore_tt2c",
                 },
                 "Vcb_catLF_CR" : {
                 "distribution" : "fscore_ttLF",
@@ -72,27 +85,22 @@ else:
 ###############################
 
 # PDF/Scale uncertainties on xsec
-if year == '2018':
-    cb.cp().AddSyst(cb, 'CMS_lumi_13TeV_2018', 'lnN', ch.SystMap()(1.015)),
-    #cb.cp().AddSyst(cb, 'CMS_trigEff%s', 'lnN', ch.SystMap()(1.015)),
+if year == '2024':
+    cb.cp().AddSyst(cb, 'CMS_lumi_13p6TeV_2024', 'lnN', ch.SystMap()(1.016)),
+    #cb.cp().process(signal).AddSyst(cb, 'effi', 'lnN', ch.SystMap()((1.002)))
+    cb.cp().process(['singletop']).AddSyst(cb, 'norm_singletop', 'lnN', ch.SystMap()((1.02))) # 2% following https://twiki.cern.ch/twiki/bin/view/LHCPhysics/SingleTopNNLORef
+    cb.cp().process(['ttW']).AddSyst(cb, 'norm_ttW', 'lnN', ch.SystMap()((1.07))) # JHEP 05 (2024) 131
+    cb.cp().process(['ttZ']).AddSyst(cb, 'norm_ttZ', 'lnN', ch.SystMap()((1.07))) # JHEP 07 (2024) 163
+    #Find appropriate uncertainties for the following lnN nuisances
+    cb.cp().process(ttH_components).AddSyst(cb, 'norm_ttH', 'lnN', ch.SystMap()((1.20)))
+    cb.cp().process(['diboson']).AddSyst(cb, 'norm_diboson', 'lnN', ch.SystMap()((1.05))) # WW: PLB 861 (2025) 139231, WZ: JHEP 04 (2025) 115
+    cb.cp().process(['wjets']).AddSyst(cb, 'norm_wjets', 'lnN', ch.SystMap()(1.02)) # JHEP 01 (2026) 047.
 
-#cb.cp().process(['wjets']).AddSyst(cb, 'QCDscale_V', 'lnN', ch.SystMap()(1.038))
-#cb.cp().process(['singletop']).AddSyst(cb, 'QCDscale_singletop', 'lnN', ch.SystMap()((1.031, 1 - 0.021)))
-#cb.cp().process(tt_components).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.024, 1 - 0.035)))
-#cb.cp().process(['ttW']).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.255, 1 - 0.164)))
-#cb.cp().process(['ttZ']).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.081, 1 - 0.093)))
-#cb.cp().process(signal.keys()).AddSyst(cb, 'QCDscale_ttbar', 'lnN', ch.SystMap()((1.081, 1 - 0.093))) # Fix this number
-#
-#cb.cp().process(ttH_modes).AddSyst(cb, 'QCDscale_ttH', 'lnN', ch.SystMap()((1.058, 1 - 0.092)))
-#
-#cb.cp().process(['wjets']).AddSyst(cb, 'pdf_qqbar', 'lnN', ch.SystMap()((1.008, 1 - 0.004)))
-#cb.cp().process(['singletop']).AddSyst(cb, 'pdf_qg', 'lnN', ch.SystMap()(1.028))
-#cb.cp().process(tt_components).AddSyst(cb, 'pdf_gg', 'lnN', ch.SystMap()(1.042))
-#cb.cp().process(['ttW']).AddSyst(cb, 'pdf_qqbar', 'lnN', ch.SystMap()(1.036))
-#cb.cp().process(['ttZ']).AddSyst(cb, 'pdf_gg', 'lnN', ch.SystMap()(1.035))
-#cb.cp().process(signal.keys()).AddSyst(cb, 'pdf_qg', 'lnN', ch.SystMap()(1.028)) # Fix this number
-#
-#cb.cp().process(ttH_modes).AddSyst(cb, 'pdf_Higgs_ttH', 'lnN', ch.SystMap()(1.036))
+for proc in tt_components_nodps:
+    cb.cp().process([proc]).AddSyst(cb, f"xsec_{proc}", 'rateParam', ch.SystMap()(1.0))
+#cb.cp().bin(["Vcb_catWcb_SR"]).process([signal]).AddSyst(cb, "Vcb2", 'rateParam', ch.SystMap()(0.0016))
+
+
 
 
 #############################
@@ -101,7 +109,8 @@ if year == '2018':
 
 # Input files to extract shapes from
 inputfiles = {bin: "" for bin in bins}
-for dp, dn, filenames in os.walk(inputdir):
+print(f"INPUTDIR: {inputdir}")
+for dp, dn, filenames in os.walk(inputdir): # Careful: this will look into all subdirectories, make sure there are no other undesired root file is around
 
     for f in filenames:
         if f.endswith(".root"):
@@ -110,26 +119,37 @@ for dp, dn, filenames in os.walk(inputdir):
                 fullpath = os.path.join(dp, f)
                 inputfiles[bin] = fullpath
 
+print(f"Input files {inputfiles}")
+
 # Output shapes file (will collect all the histograms with shape variations)
 outputShapesName = outputCardName.replace(".txt", "_shapes.root")
 print("Output file name: " + outputShapesName)
 
 shapeSysts = {
     'CMS_pileup_%s' % year: all_procs,
-    'CMS_flavTag_PS_isr_ttbar_%s' % year: tt_components,
-    'CMS_flavTag_PS_fsr_ttbar_%s' % year: tt_components,
-    'CMS_flavTag_PS_isr_wjets_%s' % year: ['wjets'],
-    'CMS_flavTag_PS_fsr_wjets_%s' % year: ['wjets'],
-    'CMS_flavTag_xsec_wjets_c_%s' % year: ['wjets'],
-    'CMS_flavTag_xsec_wjets_b_%s' % year: ['wjets'],
-    'CMS_flavTag_JER%s' % year: all_procs,
-    'CMS_flavTag_JES%s' % year: all_procs,
-    'CMS_flavTag_PU_%s' % year: all_procs,
-    'CMS_flavTag_stat_%s' % year: all_procs,
-    'CMS_flavTag_LHE_muF_ttbar_%s' % year: tt_components,
-    'CMS_flavTag_LHE_muR_ttbar_%s' % year: tt_components,
-    'CMS_flavTag_LHE_muF_wjets_%s' % year: ['wjets'],
-    'CMS_flavTag_LHE_muR_wjets_%s' % year: ['wjets'],
+    'CMS_trigEff_%s' % year: all_procs,
+    'CMS_muEff_%s' % year: all_procs,
+    'CMS_elEff_%s' % year: all_procs,
+    'CMS_elSmear_%s' % year: all_procs,
+    'CMS_elScale_%s' % year: all_procs,
+    'CMS_muSmear_%s' % year: all_procs,
+    'CMS_muScale_%s' % year: all_procs,
+    #'CMS_flavTag_PS_isr_ttbar_%s' % year: all_procs,
+    #'CMS_flavTag_PS_fsr_ttbar_%s' % year: all_procs,
+    #'CMS_flavTag_PS_isr_wjets_%s' % year: all_procs,
+    #'CMS_flavTag_PS_fsr_wjets_%s' % year: all_procs,
+    'CMS_flavTag_xsec_ttbar': all_procs,
+    'CMS_flavTag_xsec_wjets_c': all_procs,
+    'CMS_flavTag_xsec_wjets_b': all_procs,
+    'CMS_flavTag_xsec_zjets_c': all_procs,
+    'CMS_flavTag_xsec_zjets_b': all_procs,
+    #'CMS_flavTag_JER%s' % year: all_procs,
+    #'CMS_flavTag_JES%s' % year: all_procs,
+    #'CMS_flavTag_PU_%s' % year: all_procs,
+    #'CMS_flavTag_LHE_muF_ttbar_%s' % year: all_procs,
+    #'CMS_flavTag_LHE_muR_ttbar_%s' % year: all_procs,
+    #'CMS_flavTag_LHE_muF_wjets_%s' % year: all_procs,
+    #'CMS_flavTag_LHE_muR_wjets_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavB_C0_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavB_C1_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavB_C2_%s' % year: all_procs,
@@ -160,44 +180,36 @@ shapeSysts = {
     'CMS_flavTag_Stat_flavL_B2_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavL_B3_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavL_B4_%s' % year: all_procs,
-    'CMS_trigEff%s' % year: all_procs,
-    'CMS_muEff%s' % year: all_procs,
-    'CMS_elEff%s' % year: all_procs,
-    'CMS_topHdampWeight%s' % year: tt_components,
-   
-    # 'CMS_ttHcc_puJetId_%s' % year: all_procs,
-    # 'CMS_ttHcc_topptWeight': ['ttbar'],
-    # 'CMS_ttHcc_zptEWKWeight': ['zjets'],
-    # 'CMS_VV_NNLOWeights_13TeV': ['vzcc', 'vzbb', 'vwqq', 'vvother'],
-    # 'CMS_ttHcc_boost_EWK_13TeV': ['zhbb', 'zhcc'],
-    # 'CMS_res_j_13TeV_%s' % year: all_procs,
-    # 'CMS_ttHcc_eff_e_Zll_13TeV_%s' % year: all_procs,  # lnN
-    # 'CMS_ttHcc_eff_m_Zll_13TeV_%s' % year: all_procs,  # lnN
-    # 'CMS_scale_e_13TeV_%s' % year: all_procs,
-    # 'CMS_LHE_weights_scale_muF_$PROCESS': all_procs,
-    # 'CMS_LHE_weights_scale_muR_$PROCESS': all_procs,
-    # 'CMS_ttHcc_ccTag_eff_cc_%s' % year: ['zhcc', 'ggzhcc', 'vzcc'],
-    # 'CMS_ttHcc_ccTag_mistag_bb_%s' % year: ['zhbb', 'ggzhbb', 'vvother'],
-    # 'CMS_HDAMP_$PROCESS': tt_components,
-
-
-    #'$PROCESS_CMS_PS_isr_%s' % year: tt_components + ttH_modes + list(signal.keys()),
-    #'$PROCESS_CMS_PS_fsr_%s' % year: tt_components + ttH_modes + list(signal.keys()),
-    #'$PROCESS_CMS_LHE_weights_scale_muF_%s' % year: tt_components + ttH_modes + list(signal.keys()),
-    #'$PROCESS_CMS_LHE_weights_scale_muR_%s' % year: tt_components + ttH_modes + list(signal.keys()),
 }
+
+#Above here, perhaps it should be something like  'LHE_muF_%s%s' % year %tt_component: tt_components, for tt_component in tt_components
 
 for syst in shapeSysts:
     print(f"Adding systematic: {syst} for processes: {shapeSysts[syst]}")
     cb.cp().process(shapeSysts[syst]).AddSyst(cb, syst, 'shape', ch.SystMap()(1.0))
             
-#print(inputfiles)
+#Now add process-dependent shape systematics (only for certain processes)
+for proc in tt_components_nobb:
+    syst_name = f"topHdampWeight_{proc}_{year}"
+    print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
+    cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
+for proc in tt_components_reduced:
+    for var in ['LHE_muF_v1', 'LHE_muR_v1', 'PS_ISR_v1', 'PS_FSR_v1']:
+        syst_name = f"{var}_{proc}_{year}"
+        print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
+        cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
+#For ttbar and ttbb backgrounds, use a special subprocess-dependent renormalization
+for proc in tt_components_mainBkg:
+    for var in ['LHE_muF_v2', 'LHE_muR_v2', 'PS_ISR_v2', 'PS_FSR_v2']:
+        syst_name = f"{var}_{proc}_{year}"
+        print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
+        cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
 
 for bin in bins:
     print(f"Extracting shapes for bin {bin} from file {inputfiles[bin]}")
     cb.cp().bin([bin]).ExtractShapes(inputfiles[bin], "$PROCESS", "$PROCESS_$SYSTEMATIC")
-    #print(f"Shapes extracted for bin {bin}:")
-    #cb.PrintAll()
+
+
 
 cb.WriteDatacard(outputCardName, outputShapesName)
 
@@ -207,6 +219,14 @@ fixNegativeBins(outputShapesName, False)
 # Now produce a new datacard with the negative bins fixed
 cb_fixed = ch.CombineHarvester()
 cb_fixed.ParseDatacard(outputCardName)
+
+
+systematics_nuisances = sorted(
+    s for s in cb_fixed.syst_name_set()
+)
+if len(systematics_nuisances) > 0:
+    cb_fixed.AddDatacardLineAtEnd('systematics group = ' + ' '.join(systematics_nuisances))
+
 cb_fixed.WriteDatacard(outputCardName, outputShapesName)
 
 # Create workspace with specific model and POI definitions
@@ -216,7 +236,47 @@ workspace_name = outputCardName.replace(".txt", ".root")
 print("Workspace name: " + workspace_name)
 workspace_name = workspace_name.replace("/Vcb","/workspace_Vcb")
 print("Workspace name: " + workspace_name)
-command = "text2workspace.py " + outputCardName + " -o " + workspace_name + " -m 125.38 -v 0 -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel --PO verbose --channel-masks --PO 'map=.*/ttbb:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttbj:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttcc:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttcj:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttLF:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttWcb:rate_ttWcb=expr;;rate_ttWcb(\"@0*@1*@1*1./(0.00085*(1.-@1*@1)+1.)\",rate_tt,rate_ratio[1,-1.,2.])'"
+
+
+if args.optimizeWSforFits:
+    command = "text2workspace.py " + outputCardName + " -o " + workspace_name + \
+    " -m 125.38 -v 0" + \
+    " --for-fits --no-wrappers --use-histsum --X-pack-asympows" + \
+    " --optimize-simpdf-constraints=cms --channel-masks"
+else:
+    command = "text2workspace.py " + outputCardName + " -o " + workspace_name + \
+    " -m 125.38 -v 0 --channel-masks"
+
+#command = "text2workspace.py " + outputCardName + " -o " + workspace_name + \
+#    " -m 125.38 -v 0 -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel" + \
+#    " --PO verbose --for-fits --no-wrappers --use-histsum --X-pack-asympows" + \
+#    " --optimize-simpdf-constraints=cms --channel-masks" + \
+#    " --PO 'map=.*/tt-vcb:rate_ttWcb=expr;;rate_ttWcb(\"@0*@0\",Vcb[1,-1.,3.])'"+ \
+#    " --PO 'map=.*/tt2b:xsec_tt2b[1,-1.,2.]'" + \
+#    " --PO 'map=.*/ttbb:xsec_ttbb[1,-1.,2.]'" + \
+#    " --PO 'map=.*/ttbj:xsec_ttbj[1,-1.,2.]'" + \
+#    " --PO 'map=.*/ttcc:xsec_ttcc[1,-1.,2.]'" + \
+#    " --PO 'map=.*/tt2c:xsec_tt2c[1,-1.,2.]'" + \
+#    " --PO 'map=.*/ttcj:xsec_ttcj[1,-1.,2.]'" + \
+#    " --PO 'map=.*/ttLF:xsec_ttLF[1,-1.,2.]'"
+    
+#if args.doValidation:
+#    command = "text2workspace.py " + outputCardName + " -o " + workspace_name + \
+#        " -m 125.38 -v 0 -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel" + \
+#        " --PO verbose --for-fits --no-wrappers --use-histsum --X-pack-asympows" + \
+#        " --optimize-simpdf-constraints=cms --channel-masks" + \
+#        " --PO 'map=.*/tt2b:xsec_tt2b[1,-1.,2.]'" + \
+#        " --PO 'map=.*/ttbb:xsec_ttbb[1,-1.,2.]'" + \
+#        " --PO 'map=.*/ttbj:xsec_ttbj[1,-1.,2.]'" + \
+#        " --PO 'map=.*/ttcc:xsec_ttcc[1,-1.,2.]'" + \
+#        " --PO 'map=.*/tt2c:xsec_tt2c[1,-1.,2.]'" + \
+#        " --PO 'map=.*/ttcj:xsec_ttcj[1,-1.,2.]'" + \
+#        " --PO 'map=.*/ttLF:xsec_ttLF[1,-1.,2.]'"+ \
+#        " --PO 'map=.*/tt-vcb:xsec_ttWcb[1,-1.,2.]'"   
+
+
+#command = "text2workspace.py " + outputCardName + " -o " + workspace_name + " -m 125.38 -v 0 -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel --PO verbose --channel-masks --PO 'map=.*/ttbb:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttbj:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttcc:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttcj:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttLF:rate_tt[1.,-1.,2.]' --PO 'map=.*/ttWcb:rate_ttWcb=expr;;rate_ttWcb(\"@0*@1*@1*1./(0.00085*(1.-@1*@1)+1.)\",rate_tt,rate_ratio[1,-1.,2.])'"
+
+
 print(command)
 subprocess.call(command, shell=True)
-
