@@ -233,7 +233,7 @@ def plot_unrolled(input_files, output_dir, sig_norm=1.0, log=False, blind=False,
             if ratio.GetBinContent(i):
                 ratio.SetBinError(i, math.sqrt(data_hist.GetBinContent(i)) / bkg_hist.GetBinContent(i))
             else:
-                ratio.SetBinError(i, 10 ** (-99))
+                ratio.SetBinError(i, 0.0)
 
         yerr = ROOT.TGraphAsymmErrors()
         yerr.Divide(data_hist, bkg_hist, "pois")

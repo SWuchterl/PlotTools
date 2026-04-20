@@ -88,12 +88,13 @@ else:
 if year == '2024':
     cb.cp().AddSyst(cb, 'CMS_lumi_13p6TeV_2024', 'lnN', ch.SystMap()(1.016)),
     #cb.cp().process(signal).AddSyst(cb, 'effi', 'lnN', ch.SystMap()((1.002)))
-    cb.cp().process(['ttW']).AddSyst(cb, 'norm_ttW', 'lnN', ch.SystMap()((1.068, 1. - 0.068))) # 0.75+-0.05(scale)+-0.01(PDF) pb / PRL 131 (2023) 231901
-    cb.cp().process(['ttZ']).AddSyst(cb, 'norm_ttZ', 'lnN', ch.SystMap()((1.085, 1. - 0.096))) # 0.86 +0.07 -0.08 (scale)+-0.02(PDF) pb / EPJC 80 (2020) 428
+    cb.cp().process(['singletop']).AddSyst(cb, 'norm_singletop', 'lnN', ch.SystMap()((1.02))) # 2% following https://twiki.cern.ch/twiki/bin/view/LHCPhysics/SingleTopNNLORef
+    cb.cp().process(['ttW']).AddSyst(cb, 'norm_ttW', 'lnN', ch.SystMap()((1.07))) # JHEP 05 (2024) 131
+    cb.cp().process(['ttZ']).AddSyst(cb, 'norm_ttZ', 'lnN', ch.SystMap()((1.07))) # JHEP 07 (2024) 163
     #Find appropriate uncertainties for the following lnN nuisances
-    cb.cp().process(ttH_components).AddSyst(cb, 'norm_ttH', 'lnN', ch.SystMap()((1.058,     1 - 0.092)))
-    cb.cp().process(['diboson']).AddSyst(cb, 'norm_diboson', 'lnN', ch.SystMap()((1.038)))
-    cb.cp().process(['wjets']).AddSyst(cb, 'norm_wjets', 'lnN', ch.SystMap()(1.038))
+    cb.cp().process(ttH_components).AddSyst(cb, 'norm_ttH', 'lnN', ch.SystMap()((1.20)))
+    cb.cp().process(['diboson']).AddSyst(cb, 'norm_diboson', 'lnN', ch.SystMap()((1.05))) # WW: PLB 861 (2025) 139231, WZ: JHEP 04 (2025) 115
+    cb.cp().process(['wjets']).AddSyst(cb, 'norm_wjets', 'lnN', ch.SystMap()(1.02)) # JHEP 01 (2026) 047.
 
 for proc in tt_components_nodps:
     cb.cp().process([proc]).AddSyst(cb, f"xsec_{proc}", 'rateParam', ch.SystMap()(1.0))

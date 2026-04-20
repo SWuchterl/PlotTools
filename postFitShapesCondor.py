@@ -115,7 +115,7 @@ on_exit_hold_reason   = strcat("Job held by ON_EXIT_HOLD due to ", ifThenElse((E
 periodic_release      = (NumJobStarts < 3) && ((CurrentTime - EnteredCurrentStatus) > 10*60)
 transfer_output_files = ""
 
-+MaxRuntime = 24*60*60
++MaxRuntime = 48*60*60
 +AccountingGroup = "group_u_CMST3.all"
 
 MY.WantOS = "el9"
