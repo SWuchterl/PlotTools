@@ -1,12 +1,12 @@
 #!/bin/sh
 # Preselection score
-PROD_VERSION=14032026_promptID
-EXTRA_NAME=ttLFm0p1
+PROD_VERSION=07042026
+EXTRA_NAME=fscores_ttLFm0p1_rebinned
 INPUT_DIR=histos_$PROD_VERSION/$EXTRA_NAME/
 OUTPUT_DIR=plots_$PROD_VERSION/$EXTRA_NAME/
-EXTRA_PATH=ttLFm0p1
-SIG_NORM=100
-CONFIG_FILE=configs/hconfig.csv
+EXTRA_PATH=fscores_ttLFm0p1_rebinned
+SIG_NORM=5
+CONFIG_FILE=configs/hconfig_fscores.csv
 
 python3 plotter.py --input_dir $INPUT_DIR --output_dir $OUTPUT_DIR --sig_norm $SIG_NORM --input_csv $CONFIG_FILE --blind
 python3 plotter.py --input_dir $INPUT_DIR --output_dir $OUTPUT_DIR --sig_norm $SIG_NORM --input_csv $CONFIG_FILE --blind --log

@@ -1,7 +1,7 @@
 Plotting and fitting tools for the |Vcb| measurement. In the following, an example workflow.
 Note that, for what concerns the Combine fitting (and datacard production) part, Combine and CombineHarvester are needed.
 You can install them within a CMSSW_15_0_10 release. It works.
-Concerning the CombineHarvester version to use, please read `Plot pre- and post-fit uncertainties on the fit templates` section.
+Concerning the CombineHarvester version to use, please read the `Plot pre- and post-fit uncertainties on the fit templates` section.
 
 # Create preselection plots
 

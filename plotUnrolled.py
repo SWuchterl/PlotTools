@@ -187,7 +187,7 @@ def plot_unrolled(input_files, output_dir, sig_norm=1.0, log=False, blind=False,
     if sig_line is not None:
         CMS.cmsDraw(sig_line, "same", msize=0, lstyle = 2, lcolor=ROOT.kRed, lwidth=3)
     if data_hist is not None:
-        CMS.cmsDraw(data_hist, "E1X0", mcolor=ROOT.kBlack)
+        CMS.cmsDraw(data_hist, "E1X0", mcolor=ROOT.kBlack, msize=0.7)
 
     hist_from_canvas = CMS.GetcmsCanvasHist(canvas.GetPad(1))
     stack_max = stack.GetHistogram().GetMaximum() if stack.GetHistogram() else 0
@@ -240,7 +240,7 @@ def plot_unrolled(input_files, output_dir, sig_norm=1.0, log=False, blind=False,
         for i in range(0, yerr.GetN() + 1):
             yerr.SetPointY(i, 1)
         CMS.cmsDraw(yerr, "e2same0", lwidth=100, msize=0, fcolor=ROOT.kBlack, fstyle=3004)
-        CMS.cmsDraw(ratio, "E1X0", mcolor=ROOT.kBlack)
+        CMS.cmsDraw(ratio, "E1X0", mcolor=ROOT.kBlack, msize=0.7)
         ref_line = ROOT.TLine(x_low, 1, x_high, 1)
         CMS.cmsDrawLine(ref_line, lcolor=ROOT.kBlack, lstyle=ROOT.kDotted)
         ratio_from_canvas = CMS.GetcmsCanvasHist(canvas.GetPad(2))

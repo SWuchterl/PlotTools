@@ -118,17 +118,6 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
     tt4f_strings = ["ttbb", "ttbj", "tt2b"]
     tt_strings   = ["ttcc", "ttcj", "tt2c", "ttLF"]
 
-    # Assign event weight based on data taking year and process type
-    weight = assign_event_weight(year, infile)
-
-    # If weight is a complex expression, define it as a new column
-    weight_column = "weight_column"
-    if not "data" in infile and not "Data" in infile: 
-        print(f"Event weight: {weight}")
-        df = df.Define(weight_column, weight)
-    else: 
-        df = df.Define(weight_column, "1") # Set collision data weight to 1
-
     # Initialize counters for events
     local_total_MC_events = 0
     local_events_in_category = {key: 0 for key in selections.keys() if not key == "base"}
@@ -153,15 +142,27 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
             if any(x in selection_name for x in tt_strings) and not "powheg" in infile:
                 continue
 
+        suffix = {'base' : '', 'ttLF' : '_0', 'ttcj' : '_41', 'tt2c' : '_42', 'ttcc' : '_43', 'tt2b' : '_51', 'ttbj' : '_52', 'ttbb' : '_53'}[selection_name]
+
+        # Assign event weight based on data taking year and process type
+        weight = assign_event_weight(year, infile, suffix)
+
+        # Define a per-selection weight column to avoid re-defining the same column name
+        weight_column = f"weight_{selection_name}"
+        if not "data" in infile and not "Data" in infile:
+            print(f"Event weight: {weight}")
+            df_weighted = df.Define(weight_column, weight)
+        else:
+            df_weighted = df.Define(weight_column, "1")  # Set collision data weight to 1
 
         if not "base" in selection_name:
             print(f"Applying additional selection for {infile}: {Fore.RED}{selection_name}{Style.RESET_ALL}")
             ttbar_event_selection = f"{selections[selection_name]}"
-            df_selected = df.Filter(ttbar_event_selection)
+            df_selected = df_weighted.Filter(ttbar_event_selection)
             if count_events:
                 print(f"Events passing additional ttbar selection: {df_selected.Count().GetValue()}")
         else:
-            df_selected = df
+            df_selected = df_weighted
 
         if not "Data" in infile and not "data" in infile and not "base" in selection_name:
             n_events = df_selected.Sum(weight_column).GetValue()
@@ -275,7 +276,7 @@ def read_csv(csv_file):
 
     return dict_list
 
-def assign_event_weight(year, infile):
+def assign_event_weight(year, infile, suffix):
     """
     Define the MC event weight according to the year. Collision data should be handled separately.
 
@@ -284,14 +285,17 @@ def assign_event_weight(year, infile):
     - infile: Input file.
     """
     weight = "1"
-    if year == 2018 or year == 2024:
-        weight = "lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
+    if year == 2024 or year == 2025:
+        weight = "lumiwgt*genWeight*xsecWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
         #weight = "0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
         #weight = "2.013*0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
-    if "ttbar" in infile:
-        weight = f"{weight}*topptWeight*renormWeight_topPt_nom"
+    if "ttbar" in infile or "tt-vcb" in infile:
+        #weight = f"{weight}*topptWeight*renormWeight_topPt_nom"
+        weight = f"{weight}*TopPtWeight[1]*TopPtWeightNorm{suffix}[1]*TOPMLWeight[5]*TOPMLWeightNorm{suffix}[5]" # New variables in custom samples 
     if "4f" in infile:
-        weight = f"{weight}*topptWeight*renormWeight_topPt_nom"#*0.7559" # 5FS / 4FS for tt+B component
+        #weight = f"{weight}*topptWeight*renormWeight_topPt_nom"#*0.7559" # 5FS / 4FS for tt+B component
+        weight = f"{weight}*TopPtWeight[1]*TopPtWeightNorm{suffix}[1]*TOPMLWeight[5]*TOPMLWeightNorm{suffix}[5]"#*0.7559" # 5FS / 4FS for tt+B component
+    
     
     return weight
 
@@ -406,9 +410,9 @@ if __name__ == "__main__":
     ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttZ.root", "h_ttW.root", "h_diboson.root", "h_singletop.root", "h_wjets.root"]
     merge_files(args.output_dir, ttH_list, "h_others.root")
 
-    merge_files(args.output_dir, ["h_ttbb-4f_ttbb.root"], "h_ttbb.root")
-    merge_files(args.output_dir, ["h_ttbb-4f_tt2b.root"], "h_tt2b.root")
-    merge_files(args.output_dir, ["h_ttbb-4f_ttbj.root"], "h_ttbj.root")
+    merge_files(args.output_dir, ["h_ttbb-4f_ttbb.root", "h_ttbb-4f-dps_ttbb.root"], "h_ttbb.root")
+    merge_files(args.output_dir, ["h_ttbb-4f_tt2b.root", "h_ttbb-4f-dps_tt2b.root"], "h_tt2b.root")
+    merge_files(args.output_dir, ["h_ttbb-4f_ttbj.root", "h_ttbb-4f-dps_ttbj.root"], "h_ttbj.root")
 
     #merge_files(args.output_dir, ["h_ttbar-vcb.root"], "h_tt-vcb.root")
 
