@@ -114,7 +114,7 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
             .Define("ak4_4_phi",   "ak4_phi.size() > 3 ? ak4_phi[3] : 0") \
             .Define("ak4_4_eta",   "ak4_eta.size() > 3 ? ak4_eta[3] : 0")
 
-    tt_file_names = ["ttbb-4f", "ttbb-dps", "ttbar-powheg"]
+    tt_file_names = ["ttbb-4f", "ttbar-powheg"]
     tt4f_strings = ["ttbb", "ttbj", "tt2b"]
     tt_strings   = ["ttcc", "ttcj", "tt2c", "ttLF"]
 

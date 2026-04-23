@@ -22,14 +22,15 @@ if not os.path.exists(outdir):
 
 channel = "SL"
 # Keep only processes that are currently produced in shapes files.
-bkgs = ["singletop", "ttbb", "ttbj", "tt2b", "ttcc", "ttcj", "tt2c", "ttLF", "wjets", "ttZ", "ttW", "diboson", "ttHbb", "ttHcc"]
-signal = ["tt-vcb"]
-tt_components = ['tt-vcb','ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'tt2c', 'ttLF'] #'ttbb-dps' whenever ready
-tt_components_mainBkg = ['ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'tt2c', 'ttLF'] #'ttbb-dps' whenever ready
-tt_components_extended = ['tt-vcb', 'ttbb', 'ttbj', 'tt2b' ,'ttcc', 'ttcj', 'tt2c', 'ttLF', "ttZ", "ttW", "ttHbb", "ttHcc"] #'ttbb-dps' whenever ready
-tt_components_reduced = ['tt-vcb', "ttZ", "ttW", "ttHbb", "ttHcc"] 
-tt_components_nobb = ['tt-vcb', 'ttcc', 'ttcj', 'tt2c', 'ttLF'] #'ttbb-dps' whenever ready
-tt_components_nodps = ['ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj', 'tt2c', 'ttLF']
+bkgs = ['singletop', 'ttbb', 'ttbj', 'tt2b', 'ttbb-dps', 'ttbj-dps', 'tt2b-dps', 'ttcc', 'ttcj', 'tt2c', 'ttLF', 'wjets', 'ttZ', 'ttW', 'diboson', 'ttHbb', 'ttHcc']
+signal = ['tt-vcb']
+tt_components = ['tt-vcb','ttbb', 'ttbj', 'tt2b', 'ttbb-dps', 'ttbj-dps', 'tt2b-dps', 'ttcc', 'ttcj', 'tt2c', 'ttLF']
+tt_components_mainBkg = ['ttbb', 'ttbj', 'tt2b', 'ttbb-dps', 'ttbj-dps', 'tt2b-dps', 'ttcc', 'ttcj', 'tt2c', 'ttLF'] 
+tt_components_extended = ['tt-vcb', 'ttbb', 'ttbj', 'tt2b', 'ttbb-dps', 'ttbj-dps', 'tt2b-dps', 'ttcc', 'ttcj', 'tt2c', 'ttLF', 'ttZ', 'ttW', 'ttHbb', 'ttHcc'] 
+tt_components_reduced = ['tt-vcb', 'ttZ', 'ttW', 'ttHbb', 'ttHcc'] 
+tt_components_nobb = ['tt-vcb', 'ttcc', 'ttcj', 'tt2c', 'ttLF'] 
+tt_components_bbdps = ['ttbb-dps', 'ttbj-dps', 'tt2b-dps'] 
+tt_components_mainBkg_nodps = ['ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj', 'tt2c', 'ttLF']
 ttH_components = ['ttHbb', 'ttHcc']
 all_procs = bkgs + signal
 
@@ -91,12 +92,13 @@ if year == '2024':
     cb.cp().process(['singletop']).AddSyst(cb, 'norm_singletop', 'lnN', ch.SystMap()((1.02))) # 2% following https://twiki.cern.ch/twiki/bin/view/LHCPhysics/SingleTopNNLORef
     cb.cp().process(['ttW']).AddSyst(cb, 'norm_ttW', 'lnN', ch.SystMap()((1.07))) # JHEP 05 (2024) 131
     cb.cp().process(['ttZ']).AddSyst(cb, 'norm_ttZ', 'lnN', ch.SystMap()((1.07))) # JHEP 07 (2024) 163
+    cb.cp().process(tt_components_bbdps).AddSyst(cb, 'norm_ttbb-dps', 'lnN', ch.SystMap()((1.50))) # 50% uncertainty on the DPS contribution
     #Find appropriate uncertainties for the following lnN nuisances
     cb.cp().process(ttH_components).AddSyst(cb, 'norm_ttH', 'lnN', ch.SystMap()((1.20)))
     cb.cp().process(['diboson']).AddSyst(cb, 'norm_diboson', 'lnN', ch.SystMap()((1.05))) # WW: PLB 861 (2025) 139231, WZ: JHEP 04 (2025) 115
     cb.cp().process(['wjets']).AddSyst(cb, 'norm_wjets', 'lnN', ch.SystMap()(1.02)) # JHEP 01 (2026) 047.
 
-for proc in tt_components_nodps:
+for proc in tt_components_mainBkg_nodps:
     cb.cp().process([proc]).AddSyst(cb, f"xsec_{proc}", 'rateParam', ch.SystMap()(1.0))
 #cb.cp().bin(["Vcb_catWcb_SR"]).process([signal]).AddSyst(cb, "Vcb2", 'rateParam', ch.SystMap()(0.0016))
 
@@ -127,29 +129,33 @@ print("Output file name: " + outputShapesName)
 
 shapeSysts = {
     'CMS_pileup_%s' % year: all_procs,
-    'CMS_trigEff_%s' % year: all_procs,
-    'CMS_muEff_%s' % year: all_procs,
-    'CMS_elEff_%s' % year: all_procs,
-    'CMS_elSmear_%s' % year: all_procs,
-    'CMS_elScale_%s' % year: all_procs,
-    'CMS_muSmear_%s' % year: all_procs,
-    'CMS_muScale_%s' % year: all_procs,
-    #'CMS_flavTag_PS_isr_ttbar_%s' % year: all_procs,
-    #'CMS_flavTag_PS_fsr_ttbar_%s' % year: all_procs,
-    #'CMS_flavTag_PS_isr_wjets_%s' % year: all_procs,
-    #'CMS_flavTag_PS_fsr_wjets_%s' % year: all_procs,
+    'CMS_trigEff' : all_procs,
+    'CMS_muEff' : all_procs,
+    'CMS_elEff' : all_procs,
+    'CMS_elSmear' : all_procs,
+    'CMS_elScale' : all_procs,
+    'CMS_muSmear' : all_procs,
+    'CMS_muScale' : all_procs,
+    #Flavor tagging
     'CMS_flavTag_xsec_ttbar': all_procs,
     'CMS_flavTag_xsec_wjets_c': all_procs,
     'CMS_flavTag_xsec_wjets_b': all_procs,
     'CMS_flavTag_xsec_zjets_c': all_procs,
     'CMS_flavTag_xsec_zjets_b': all_procs,
-    #'CMS_flavTag_JER%s' % year: all_procs,
-    #'CMS_flavTag_JES%s' % year: all_procs,
-    #'CMS_flavTag_PU_%s' % year: all_procs,
-    #'CMS_flavTag_LHE_muF_ttbar_%s' % year: all_procs,
-    #'CMS_flavTag_LHE_muR_ttbar_%s' % year: all_procs,
-    #'CMS_flavTag_LHE_muF_wjets_%s' % year: all_procs,
-    #'CMS_flavTag_LHE_muR_wjets_%s' % year: all_procs,
+    'CMS_flavTag_xsec_singlet_tCh': all_procs,
+    'CMS_flavTag_xsec_singlet_tW': all_procs,
+    'CMS_flavTag_xsec_VV': all_procs,
+    'CMS_flavTag_EleReco': all_procs,
+    'CMS_flavTag_EleScale': all_procs,
+    'CMS_flavTag_EleSmear': all_procs,
+    'CMS_flavTag_ElePromptMVA': all_procs,
+    'CMS_flavTag_EleTrigger': all_procs,
+    'CMS_flavTag_MuPromptMVA': all_procs,
+    'CMS_flavTag_MuTrigger': all_procs,
+    'CMS_flavTag_MuScale': all_procs,
+    'CMS_flavTag_MuResol': all_procs,
+    'CMS_flavTag_PU_%s' % year: all_procs,
+    'CMS_flavTag_Lumi_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavB_C0_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavB_C1_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavB_C2_%s' % year: all_procs,
@@ -180,6 +186,43 @@ shapeSysts = {
     'CMS_flavTag_Stat_flavL_B2_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavL_B3_%s' % year: all_procs,
     'CMS_flavTag_Stat_flavL_B4_%s' % year: all_procs,
+    'CMS_flavTag_LHE_muF_ttbar': all_procs,
+    'CMS_flavTag_LHE_muR_ttbar': all_procs,
+    'CMS_flavTag_LHE_muF_singlet': all_procs,
+    'CMS_flavTag_LHE_muR_singlet': all_procs,
+    'CMS_flavTag_LHE_muF_wjets': all_procs,
+    'CMS_flavTag_LHE_muR_wjets': all_procs,
+    'CMS_flavTag_LHE_muF_zjets': all_procs,
+    'CMS_flavTag_LHE_muR_zjets': all_procs,
+    'CMS_flavTag_LHE_muF_diboson': all_procs,
+    'CMS_flavTag_LHE_muR_diboson': all_procs,
+    'CMS_flavTag_PS_ISR_ttbar': all_procs,
+    'CMS_flavTag_PS_FSR_ttbar': all_procs,
+    'CMS_flavTag_PS_ISR_singlet': all_procs,
+    'CMS_flavTag_PS_FSR_singlet': all_procs,
+    'CMS_flavTag_PS_ISR_wjets': all_procs,
+    'CMS_flavTag_PS_FSR_wjets': all_procs,
+    'CMS_flavTag_PS_ISR_zjets': all_procs,
+    'CMS_flavTag_PS_FSR_zjets': all_procs,
+    'CMS_flavTag_PS_ISR_diboson': all_procs,
+    'CMS_flavTag_PS_FSR_diboson': all_procs,
+    'CMS_flavTag_JES_Absolute': all_procs,
+    'CMS_flavTag_JES_BBEC1': all_procs,
+    'CMS_flavTag_JES_FlavorQCD': all_procs,
+    'CMS_flavTag_JES_RelativeBal': all_procs,
+    'CMS_flavTag_JES_Absolute_%s' % year: all_procs,
+    'CMS_flavTag_JES_BBEC1_%s' % year: all_procs,
+    'CMS_flavTag_JES_RelativeSample_%s' % year: all_procs,
+    'CMS_flavTag_JER_%s' % year: all_procs,
+    'jes_Absolute': all_procs,
+    'jes_Absolute_%s' % year: all_procs,
+    'jes_BBEC1': all_procs,
+    'jes_BBEC1_%s' % year: all_procs,
+    'jes_FlavorQCD': all_procs,
+    'jes_RelativeBal': all_procs,
+    'jes_RelativeSample_%s' % year: all_procs,
+    'jer' : all_procs,
+    'met' : all_procs,
 }
 
 #Above here, perhaps it should be something like  'LHE_muF_%s%s' % year %tt_component: tt_components, for tt_component in tt_components
@@ -193,17 +236,30 @@ for proc in tt_components_nobb:
     syst_name = f"topHdampWeight_{proc}_{year}"
     print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
     cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
-for proc in tt_components_reduced:
-    for var in ['LHE_muF_v1', 'LHE_muR_v1', 'PS_ISR_v1', 'PS_FSR_v1']:
+
+per_process_systematics = ['bFragWeight', 'LHE_muF', 'LHE_muR', 'PS_fsr_G2GG_muR', 'PS_isr_G2GG_muR', 
+                           'PS_fsr_G2QQ_muR', 'PS_isr_G2QQ_muR', 'PS_fsr_Q2QG_muR', 'PS_isr_Q2QG_muR', 
+                           'PS_fsr_X2XG_muR', 'PS_isr_X2XG_muR', 'PS_fsr_G2GG_cNS', 'PS_isr_G2GG_cNS',
+                           'PS_fsr_G2QQ_cNS', 'PS_isr_G2QQ_cNS', 'PS_fsr_G2QG_cNS', 'PS_isr_G2QG_cNS',
+                           'PS_fsr_X2XG_cNS', 'PS_isr_X2XG_cNS']
+
+for proc in tt_components_extended:
+    for var in per_process_systematics:
         syst_name = f"{var}_{proc}_{year}"
         print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
         cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
-#For ttbar and ttbb backgrounds, use a special subprocess-dependent renormalization
-for proc in tt_components_mainBkg:
-    for var in ['LHE_muF_v2', 'LHE_muR_v2', 'PS_ISR_v2', 'PS_FSR_v2']:
-        syst_name = f"{var}_{proc}_{year}"
-        print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
-        cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
+
+#for proc in tt_components_reduced:
+#    for var in ['LHE_muF_v1', 'LHE_muR_v1', 'PS_ISR_v1', 'PS_FSR_v1']:
+#        syst_name = f"{var}_{proc}_{year}"
+#        print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
+#        cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
+##For ttbar and ttbb backgrounds, use a special subprocess-dependent renormalization
+#for proc in tt_components_mainBkg:
+#    for var in ['LHE_muF_v2', 'LHE_muR_v2', 'PS_ISR_v2', 'PS_FSR_v2']:
+#        syst_name = f"{var}_{proc}_{year}"
+#        print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
+#        cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
 
 for bin in bins:
     print(f"Extracting shapes for bin {bin} from file {inputfiles[bin]}")

@@ -69,7 +69,6 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
     tt4f_strings = ["ttbb", "ttbj", "tt2b"]
     tt_strings   = ["ttcc", "ttcj", "tt2c", "ttLF"]
 
-
     histograms = {}
     # Process each selection-output combinations
     for selection_name in selections:
@@ -120,10 +119,10 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
             for (score, adhoc_sel), outfile in zip(adhoc_selection.items(), output_files):
 
                 hist_name = infile.split('/')[-1].replace('_tree.root','')
-                if any(x in infile for x in tt_file_names):
+                if any(x in infile for x in tt_file_names) and "-dps" not in infile:
                     hist_name = selection_name
-                #if "Data" in infile or "data" in infile:
-                #    hist_name = "data_obs"
+                elif any(x in infile for x in tt_file_names) and "-dps" in infile:
+                    hist_name = selection_name + "-dps"
                 
                 if not syst == "None":
                     #Keep the process name in the systematic name for process-dependent systematics
@@ -196,6 +195,155 @@ def process_trees_parallel(input_files, output_files, tree_name, year, selection
     else:
         with mp.Pool(processes=use_procs) as pool:
             pool.map(process_func, input_files)
+
+
+def process_tree_extra_syst(infile, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning, extra_syst_name):
+    """
+    Process one tree file corresponding to an externally-produced shape variation
+    and write histograms with suffix `extra_syst_name` into existing output files.
+    """
+    print(f"{Fore.CYAN}Processing external systematic file: {infile} ({extra_syst_name}){Style.RESET_ALL}")
+
+    if "QCD" in infile:
+        return
+
+    input_file = ROOT.TFile.Open(infile)
+    if not input_file or input_file.IsZombie():
+        raise FileNotFoundError(f"Could not open file: {infile}")
+
+    tree = input_file.Get(tree_name)
+    if not tree or not isinstance(tree, ROOT.TTree):
+        raise ValueError(f"TTree '{tree_name}' not found in file '{infile}'.")
+
+    tree.SetCacheSize(50000000)
+    tree.AddBranchToCache("*", True)
+
+    df = ROOT.RDataFrame(tree)
+
+    base_filter = selections["base"]
+    if "singlee" in infile:
+        base_filter += " && passTrigMu==0"
+    df = df.Filter(base_filter)
+
+    df = df.Define("denominator", "score_ttbb + score_tt2b + score_ttbj + score_ttcc + score_tt2c + score_ttcj + score_ttLF") \
+        .Define("fscore_ttbb", "score_ttbb / denominator") \
+        .Define("fscore_tt2b", "score_tt2b / denominator") \
+        .Define("fscore_ttbj", "score_ttbj / denominator") \
+        .Define("fscore_ttcc", "score_ttcc / denominator") \
+        .Define("fscore_tt2c", "score_tt2c / denominator") \
+        .Define("fscore_ttcj", "score_ttcj / denominator") \
+        .Define("fscore_ttLF", "score_ttLF / denominator")
+
+    tt_file_names = ["ttbb-4f", "ttbar-powheg"]
+    tt4f_strings = ["ttbb", "ttbj", "tt2b"]
+    tt_strings = ["ttcc", "ttcj", "tt2c", "ttLF"]
+
+    histograms = {}
+    for selection_name in selections:
+        if not "base" in selection_name and not any(x in infile for x in tt_file_names):
+            continue
+        if any(x in infile for x in tt_file_names) and "base" in selection_name:
+            continue
+        if any(x in selection_name for x in tt4f_strings) and not "4f" in infile:
+            continue
+        if any(x in selection_name for x in tt_strings) and not "powheg" in infile:
+            continue
+
+        suffix = {'base': '', 'ttLF': '_0', 'ttcj': '_41', 'tt2c': '_42', 'ttcc': '_43', 'tt2b': '_51', 'ttbj': '_52', 'ttbb': '_53'}[selection_name]
+
+        if not "base" in selection_name:
+            ttbar_event_selection = f"{selections[selection_name]}"
+            df_selected = df.Filter(ttbar_event_selection)
+        else:
+            df_selected = df
+
+        # Keep same weight convention as nominal histogram production.
+        weight = assign_event_weight(year, suffix, infile)
+        weight_column = f"weight_{selection_name}_{extra_syst_name}"
+        if "data" not in infile and "Data" not in infile:
+            df_selected = df_selected.Define(weight_column, weight)
+        else:
+            df_selected = df_selected.Define(weight_column, "1")
+
+        final_df = {}
+        for (score, adhoc_sel), outfile in zip(adhoc_selection.items(), output_files):
+            hist_name = infile.split('/')[-1].replace('_tree.root', '')
+            if any(x in infile for x in tt_file_names) and "-dps" not in infile:
+                hist_name = selection_name
+            elif any(x in infile for x in tt_file_names) and "-dps" in infile:
+                hist_name = selection_name + "-dps"
+
+            hist_name = f"{hist_name}_{extra_syst_name}"
+            final_df[score] = df_selected.Filter(adhoc_sel)
+
+            hist_key = (selection_name, outfile, hist_name, score)
+            histograms[hist_key] = final_df[score].Histo1D(
+                (hist_name, f"Histogram of {score} for process {hist_name}",
+                 len(adhoc_binning[score]) - 1, adhoc_binning[score]),
+                score, weight_column
+            )
+
+    materialized_hists = {key: hist_lazy.GetPtr() for key, hist_lazy in histograms.items()}
+
+    output_file_handles = {}
+    for key, hist in materialized_hists.items():
+        _, outfile, _, _ = key
+        if outfile not in output_file_handles:
+            output_file_handles[outfile] = ROOT.TFile(outfile, "UPDATE")
+
+        output_file_handles[outfile].cd()
+        hist.Write(hist.GetName(), ROOT.TObject.kOverwrite)
+
+    for f in output_file_handles.values():
+        f.Close()
+
+    input_file.Close()
+
+
+def add_extra_systematic_histograms(extra_syst_dir, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning):
+    """
+    Add extra systematic-shape histograms from an external production directory.
+    Directory layout is expected to be:
+      extra_syst_dir/<syst_dir_name>/*.root
+    The histogram suffix is the same as <syst_dir_name>.
+    """
+    if not extra_syst_dir:
+        return
+
+    if not os.path.isdir(extra_syst_dir):
+        print(f"{Fore.YELLOW}WARNING: external syst directory not found: {extra_syst_dir}{Style.RESET_ALL}")
+        return
+
+    syst_dirs = sorted([d for d in glob.glob(os.path.join(extra_syst_dir, "*")) if os.path.isdir(d)])
+    if len(syst_dirs) == 0:
+        print(f"{Fore.YELLOW}WARNING: no systematic subdirectories found in: {extra_syst_dir}{Style.RESET_ALL}")
+        return
+
+    for syst_dir in syst_dirs:
+        syst_dir_name = os.path.basename(syst_dir.rstrip("/"))
+
+        # Keep only explicit up/down shape variations; skip helper folders.
+        if not (syst_dir_name.endswith("_up") or syst_dir_name.endswith("_down")):
+            print(f"{Fore.YELLOW}Skipping non-shape directory: {syst_dir_name}{Style.RESET_ALL}")
+            continue
+
+        input_files = sorted(glob.glob(os.path.join(syst_dir, "*_tree.root")))
+        if len(input_files) == 0:
+            print(f"{Fore.YELLOW}No input ROOT files found in {syst_dir}{Style.RESET_ALL}")
+            continue
+
+        print(f"{Fore.MAGENTA}Adding external systematic {syst_dir_name}{Style.RESET_ALL}")
+        for infile in input_files:
+            process_tree_extra_syst(
+                infile,
+                output_files,
+                tree_name,
+                year,
+                selections,
+                adhoc_selection,
+                adhoc_binning,
+                syst_dir_name,
+            )
 
 
 
@@ -290,6 +438,9 @@ if __name__ == "__main__":
     parser.add_argument("--electron", nargs="?", const=1, type=bool, default=False, required=False, help="Process electron channel only.")
     parser.add_argument("--muon", nargs="?", const=1, type=bool, default=False, required=False, help="Process muon channel only.")
     parser.add_argument("--nproc", type=int, help="Number of worker processes. Use 1 to avoid concurrent ROOT file writes.")
+    parser.add_argument("--extra_syst_dir", type=str,
+                        default="/eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07042026_syst_2024_1L_Wcb/",
+                        help="Directory containing extra shape systematics in per-systematic subfolders.")
 
     args = parser.parse_args()
 
@@ -337,8 +488,8 @@ if __name__ == "__main__":
                    #Pileup and lepton efficiencies
                    "CMS_pileup_%sUp"   % year  : "puWeightUp/puWeight", 
                    "CMS_pileup_%sDown" % year  : "puWeightDown/puWeight",
-                   "CMS_trigEff_%sUp"   % year : "trigEffWeightUp/trigEffWeight",
-                   "CMS_trigEff_%sDown" % year : "trigEffWeightDown/trigEffWeight",
+                   "CMS_trigEffUp"   : "trigEffWeightUp/trigEffWeight",
+                   "CMS_trigEffDown" : "trigEffWeightDown/trigEffWeight",
                    "CMS_muEffUp"     : "muEffWeight_UP/muEffWeight",
                    "CMS_muEffDown"   : "muEffWeight_DOWN/muEffWeight",
                    "CMS_elEffUp"     : "elEffWeight_UP/elEffWeight",
@@ -576,7 +727,17 @@ if __name__ == "__main__":
 
     nprocs = args.nproc if args.nproc else len(input_files)
 
-    process_trees_parallel(input_files, output_files, args.tree_name, args.year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nprocs)
+    #process_trees_parallel(input_files, output_files, args.tree_name, args.year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nprocs)
 
-    sum_data(output_files)
+    add_extra_systematic_histograms(
+        args.extra_syst_dir,
+        output_files,
+        args.tree_name,
+        args.year,
+        selections,
+        adhoc_selection,
+        adhoc_binning,
+    )
+
+    #sum_data(output_files)
     print(f"All done!")
