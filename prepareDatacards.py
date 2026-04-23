@@ -225,7 +225,7 @@ shapeSysts = {
     'jer' : all_procs,
     'met' : all_procs,
     'tune_CP5' : signal_and_ttbb,
-    'CRER' : signal_and_ttbb,
+    'CR' : signal_and_ttbb,
 }
 
 #Above here, perhaps it should be something like  'LHE_muF_%s%s' % year %tt_component: tt_components, for tt_component in tt_components
