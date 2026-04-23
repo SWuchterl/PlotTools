@@ -32,6 +32,7 @@ tt_components_nobb = ['tt-vcb', 'ttcc', 'ttcj', 'tt2c', 'ttLF']
 tt_components_bbdps = ['ttbb-dps', 'ttbj-dps', 'tt2b-dps'] 
 tt_components_mainBkg_nodps = ['ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj', 'tt2c', 'ttLF']
 ttH_components = ['ttHbb', 'ttHcc']
+signal_and_ttbb = ['tt-vcb', 'ttbb', 'tt2b', 'ttbj']
 all_procs = bkgs + signal
 
 
@@ -223,6 +224,8 @@ shapeSysts = {
     'jes_RelativeSample_%s' % year: all_procs,
     'jer' : all_procs,
     'met' : all_procs,
+    'tune_CP5' : signal_and_ttbb,
+    'CRER' : signal_and_ttbb,
 }
 
 #Above here, perhaps it should be something like  'LHE_muF_%s%s' % year %tt_component: tt_components, for tt_component in tt_components
