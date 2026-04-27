@@ -2,8 +2,8 @@
 # This script is used to run the hdumper to make histograms
 INPUT_DIR=/eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07042026_2024_1L_Wcb/
 PROD_VERSION=07042026
-CONFIG_FILE=configs/hconfig.csv
-EXTRA_NAME=
+CONFIG_FILE=configs/hconfig_minimal.csv
+EXTRA_NAME=separateProcesses
 OUTPUT_DIR=histos_$PROD_VERSION/$EXTRA_NAME/
 YEAR=2024
 

@@ -401,12 +401,6 @@ if __name__ == "__main__":
     ROOT.gSystem.Exec("sync")
 
     # Merge some of the output files
-
-    # We do not have ttV samples for 2024 yet
-    #ttV_list = ["h_ttW.root", "h_ttZ.root"]
-    #merge_files(args.output_dir, ttV_list, "h_ttV.root")
-
-    # We do not have ttH samples for 2024 yet
     ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttZ.root", "h_ttW.root", "h_diboson.root", "h_singletop.root", "h_wjets.root"]
     merge_files(args.output_dir, ttH_list, "h_others.root")
 
@@ -414,23 +408,6 @@ if __name__ == "__main__":
     merge_files(args.output_dir, ["h_ttbb-4f_tt2b.root", "h_ttbb-4f-dps_tt2b.root"], "h_tt2b.root")
     merge_files(args.output_dir, ["h_ttbb-4f_ttbj.root", "h_ttbb-4f-dps_ttbj.root"], "h_ttbj.root")
 
-    #merge_files(args.output_dir, ["h_ttbar-vcb.root"], "h_tt-vcb.root")
-
-    # We do not have dps samples for 2024 yet
-    #if use5FS:
-    #    ttbb_list = ["h_ttbar-powheg_ttbb.root", "h_ttbb-dps_ttbb.root"]
-    #    merge_files(args.output_dir, ttbb_list, "h_ttbb-withDPS.root")
-    #    ttbj_list = ["h_ttbar-powheg_ttbj.root", "h_ttbb-dps_ttbj.root"]
-    #    merge_files(args.output_dir, ttbj_list, "h_ttbj-withDPS.root")
-    #else:
-    #    ttbb_list = ["h_ttbb-4f_ttbb.root", "h_ttbb-dps_ttbb.root"]
-    #    merge_files(args.output_dir, ttbb_list, "h_ttbb-withDPS.root")
-    #    ttbj_list = ["h_ttbb-4f_ttbj.root", "h_ttbb-dps_ttbj.root"]
-    #    merge_files(args.output_dir, ttbj_list, "h_ttbj-withDPS.root")
-
-    # We do not have TWZ for 2024 yet
-    #diboson_list = ["h_TWZ.root", "h_diboson.root"]
-    #merge_files(args.output_dir, diboson_list, "h_diboson-tWZ.root")
     data_list = ["h_singlee.root", "h_singlemu.root"]
     merge_files(args.output_dir, data_list, "h_Data.root")
 

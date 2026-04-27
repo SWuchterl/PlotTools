@@ -1,5 +1,2 @@
 Variable, nbins, xmin, xmax
-n_btagM, 8, -0.5, 7.5
-n_ctagM, 8, -0.5, 7.5
-n_btagT, 7, -0.5, 6.5
-n_ctagT, 7, -0.5, 6.5
+score_tt_Wcb, 20, 0., 1.

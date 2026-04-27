@@ -224,8 +224,9 @@ shapeSysts = {
     'jes_RelativeSample_%s' % year: all_procs,
     'jer' : all_procs,
     'met' : all_procs,
-    'tune_CP5' : signal_and_ttbb,
-    'CR' : signal_and_ttbb,
+    'tune_CP5' : signal,
+    'CR1' : signal_and_ttbb,
+    'CR2' : signal_and_ttbb,
 }
 
 #Above here, perhaps it should be something like  'LHE_muF_%s%s' % year %tt_component: tt_components, for tt_component in tt_components
@@ -244,7 +245,7 @@ per_process_systematics = ['bFragWeight', 'LHE_muF', 'LHE_muR', 'PS_fsr_G2GG_muR
                            'PS_fsr_G2QQ_muR', 'PS_isr_G2QQ_muR', 'PS_fsr_Q2QG_muR', 'PS_isr_Q2QG_muR', 
                            'PS_fsr_X2XG_muR', 'PS_isr_X2XG_muR', 'PS_fsr_G2GG_cNS', 'PS_isr_G2GG_cNS',
                            'PS_fsr_G2QQ_cNS', 'PS_isr_G2QQ_cNS', 'PS_fsr_G2QG_cNS', 'PS_isr_G2QG_cNS',
-                           'PS_fsr_X2XG_cNS', 'PS_isr_X2XG_cNS']
+                           'PS_fsr_X2XG_cNS', 'PS_isr_X2XG_cNS','bFragPetersonWeight']
 
 for proc in tt_components_extended:
     for var in per_process_systematics:
@@ -285,6 +286,12 @@ systematics_nuisances = sorted(
 )
 if len(systematics_nuisances) > 0:
     cb_fixed.AddDatacardLineAtEnd('systematics group = ' + ' '.join(systematics_nuisances))
+
+allbutflavor = sorted(
+    s for s in cb_fixed.syst_name_set() if not s.startswith('CMS_flavTag')
+)
+if len(allbutflavor) > 0:
+    cb_fixed.AddDatacardLineAtEnd('allbutflavor group = ' + ' '.join(allbutflavor))
 
 cb_fixed.WriteDatacard(outputCardName, outputShapesName)
 

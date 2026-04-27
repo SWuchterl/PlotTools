@@ -29,7 +29,7 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
 
     print(f"{Fore.RED}Processing file: {infile}{Style.RESET_ALL}")
 
-    if "QCD" in infile:
+    if "QCD_tree" in infile:
         return #Skip QCD multijet for now
 
     # Open input file
@@ -101,7 +101,9 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
         systematics = produce_systematics(year, suffix)
 
         for syst in systematics.keys():
-            if any(procDepSyst in syst for procDepSyst in perProcessSysts) and "tt" not in infile:
+            # Keep only the explicitly process-dependent nuisances for tt-like samples.
+            # Use startswith to avoid catching unrelated names like CMS_flavTag_LHE_muF_*.
+            if any(syst.startswith(procDepSyst) for procDepSyst in perProcessSysts) and "tt" not in infile:
                 continue # Skip certain systematics if the process is not a ttbar one (including signal, ttH, and ttV)
             if syst == "None":
                 weight = assign_event_weight(year, suffix, infile)
@@ -204,7 +206,7 @@ def process_tree_extra_syst(infile, output_files, tree_name, year, selections, a
     """
     print(f"{Fore.CYAN}Processing external systematic file: {infile} ({extra_syst_name}){Style.RESET_ALL}")
 
-    if "QCD" in infile:
+    if "QCD_tree" in infile:
         return
 
     input_file = ROOT.TFile.Open(infile)
@@ -319,6 +321,13 @@ def add_extra_systematic_histograms(extra_syst_dir, output_files, tree_name, yea
         print(f"{Fore.YELLOW}WARNING: no systematic subdirectories found in: {extra_syst_dir}{Style.RESET_ALL}")
         return
 
+    def to_combine_syst_name(syst_dir_name):
+        if syst_dir_name.endswith("_up"):
+            return syst_dir_name[:-3] + "Up"
+        if syst_dir_name.endswith("_down"):
+            return syst_dir_name[:-5] + "Down"
+        return syst_dir_name
+
     for syst_dir in syst_dirs:
         syst_dir_name = os.path.basename(syst_dir.rstrip("/"))
 
@@ -332,7 +341,8 @@ def add_extra_systematic_histograms(extra_syst_dir, output_files, tree_name, yea
             print(f"{Fore.YELLOW}No input ROOT files found in {syst_dir}{Style.RESET_ALL}")
             continue
 
-        print(f"{Fore.MAGENTA}Adding external systematic {syst_dir_name}{Style.RESET_ALL}")
+        combine_syst_name = to_combine_syst_name(syst_dir_name)
+        print(f"{Fore.MAGENTA}Adding external systematic {syst_dir_name} -> {combine_syst_name}{Style.RESET_ALL}")
         for infile in input_files:
             process_tree_extra_syst(
                 infile,
@@ -342,7 +352,7 @@ def add_extra_systematic_histograms(extra_syst_dir, output_files, tree_name, yea
                 selections,
                 adhoc_selection,
                 adhoc_binning,
-                syst_dir_name,
+                combine_syst_name,
             )
 
 
@@ -438,9 +448,7 @@ if __name__ == "__main__":
     parser.add_argument("--electron", nargs="?", const=1, type=bool, default=False, required=False, help="Process electron channel only.")
     parser.add_argument("--muon", nargs="?", const=1, type=bool, default=False, required=False, help="Process muon channel only.")
     parser.add_argument("--nproc", type=int, help="Number of worker processes. Use 1 to avoid concurrent ROOT file writes.")
-    parser.add_argument("--extra_syst_dir", type=str,
-                        default="/eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07042026_syst_2024_1L_Wcb/",
-                        help="Directory containing extra shape systematics in per-systematic subfolders.")
+    parser.add_argument("--extra_syst_dir", type=str,help="Directory containing extra shape systematics in per-systematic subfolders.")
 
     args = parser.parse_args()
 
@@ -662,6 +670,8 @@ if __name__ == "__main__":
                    "topHdampWeight_%sDown" % year : f"TOPMLWeight[3]*TOPMLWeightNorm{suffix}[3]",
                    "bFragWeight_%sUp"   % year : f"(TOPMLWeight[4]*TOPMLWeightNorm{suffix}[4])/(TOPMLWeight[5]*TOPMLWeightNorm{suffix}[5])", #Divide by bFrag nominal and multiply by bFrag up
                    "bFragWeight_%sDown" % year : f"1/(TOPMLWeight[5]*TOPMLWeightNorm{suffix}[5])", #The standard samples are effectively bFrag down, so here just dividing by bFrag nominal and its renorm weight
+                   "bFragPetersonWeight_%sUp"   % year : f"bFragAndDecayWeight[3]*BFragAndDecayWeightNorm{suffix}[3]", #A one-sided systematic
+                   "bFragPetersonWeight_%sDown" % year : f"1.", #Effectively a one-sided systematic
                    "LHE_muF_%sUp"   % year : f"LHEScaleWeight[5]*LHEScaleWeightNorm{suffix}[5]",
                    "LHE_muF_%sDown" % year : f"LHEScaleWeight[3]*LHEScaleWeightNorm{suffix}[3]",
                    "LHE_muR_%sUp"   % year : f"LHEScaleWeight[7]*LHEScaleWeightNorm{suffix}[7]",
@@ -700,34 +710,15 @@ if __name__ == "__main__":
                    "PS_isr_G2QG_cNS_%sUp"   %year : f"PSWeight[41]*PSWeightNorm{suffix}[41]",
                    "PS_isr_X2XG_cNS_%sDown" %year : f"PSWeight[42]*PSWeightNorm{suffix}[42]",
                    "PS_isr_X2XG_cNS_%sUp"   %year : f"PSWeight[43]*PSWeightNorm{suffix}[43]",
-                   #"topHdampWeight_%sUp" % year : "topHdampWeightUp*renormWeight_hdampML_up",
-                   #"topHdampWeight_%sDown" % year : "topHdampWeightDown*renormWeight_hdampML_down",
-                   #"LHE_muF_v1_%sUp" % year : "LHEScaleWeight[5]*LHEScaleWeightNorm[5]",
-                   #"LHE_muF_v1_%sDown" % year : "LHEScaleWeight[3]*LHEScaleWeightNorm[3]",
-                   #"LHE_muR_v1_%sUp" % year : "LHEScaleWeight[7]*LHEScaleWeightNorm[7]",
-                   #"LHE_muR_v1_%sDown" % year : "LHEScaleWeight[1]*LHEScaleWeightNorm[1]",
-                   #"PS_ISR_v1_%sUp" % year : "PSWeight[0]*PSWeightNorm[0]",
-                   #"PS_ISR_v1_%sDown" % year : "PSWeight[2]*PSWeightNorm[2]",
-                   #"PS_FSR_v1_%sUp" % year : "PSWeight[1]*PSWeightNorm[1]",
-                   #"PS_FSR_v1_%sDown" % year : "PSWeight[3]*PSWeightNorm[3]",
-                   ##Now add the same variations but with a custom, tt+X-specific normalization, to be used for shape variations in the ttbar background
-                   #"LHE_muF_v2_%sUp" % year : "LHEScaleWeight[5]*renormWeight_muF_up",
-                   #"LHE_muF_v2_%sDown" % year : "LHEScaleWeight[3]*renormWeight_muF_down",
-                   #"LHE_muR_v2_%sUp" % year : "LHEScaleWeight[7]*renormWeight_muR_up",
-                   #"LHE_muR_v2_%sDown" % year : "LHEScaleWeight[1]*renormWeight_muR_down",
-                   #"PS_ISR_v2_%sUp" % year : "PSWeight[0]*renormWeight_isr_up",
-                   #"PS_ISR_v2_%sDown" % year : "PSWeight[2]*renormWeight_isr_down",
-                   #"PS_FSR_v2_%sUp" % year : "PSWeight[1]*renormWeight_fsr_up",
-                   #"PS_FSR_v2_%sDown" % year : "PSWeight[3]*renormWeight_fsr_down",
                }
         
         return systematics
 
-    perProcessSysts = ["topHdampWeight", "bFragWeight", "LHE_muF", "LHE_muR", "PS_fsr", "PS_isr"]
+    perProcessSysts = ["topHdampWeight_", "bFragWeight_", "bFragPetersonWeight_", "LHE_muF_", "LHE_muR_", "PS_fsr_", "PS_isr_"]
 
     nprocs = args.nproc if args.nproc else len(input_files)
 
-    #process_trees_parallel(input_files, output_files, args.tree_name, args.year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nprocs)
+    process_trees_parallel(input_files, output_files, args.tree_name, args.year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nprocs)
 
     add_extra_systematic_histograms(
         args.extra_syst_dir,
@@ -739,5 +730,5 @@ if __name__ == "__main__":
         adhoc_binning,
     )
 
-    #sum_data(output_files)
+    sum_data(output_files)
     print(f"All done!")
