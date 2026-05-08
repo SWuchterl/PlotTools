@@ -40,5 +40,6 @@ v_eta, 80, -4., 4.
 v_phi, 50, -3.14, 3.14
 ht, 50, 0., 1000.
 minDR_bc, 40, 0., 4.
-mass_minDR_bc, 50, 0., 1000.
-maxMass_bc, 50, 0., 1000.
+minDR_b, 40, 0., 4.
+mass_minDR_bc, 30, 0., 600.
+mass_minDR_b, 30, 0., 600.

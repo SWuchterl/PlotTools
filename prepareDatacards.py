@@ -25,6 +25,7 @@ channel = "SL"
 bkgs = ['singletop', 'ttbb', 'ttbj', 'tt2b', 'ttbb-dps', 'ttbj-dps', 'tt2b-dps', 'ttcc', 'ttcj', 'tt2c', 'ttLF', 'wjets', 'ttZ', 'ttW', 'diboson', 'ttHbb', 'ttHcc']
 signal = ['tt-vcb']
 tt_components = ['tt-vcb','ttbb', 'ttbj', 'tt2b', 'ttbb-dps', 'ttbj-dps', 'tt2b-dps', 'ttcc', 'ttcj', 'tt2c', 'ttLF']
+minorBkg_components = ['singletop', 'wjets', 'diboson',]
 tt_components_mainBkg = ['ttbb', 'ttbj', 'tt2b', 'ttbb-dps', 'ttbj-dps', 'tt2b-dps', 'ttcc', 'ttcj', 'tt2c', 'ttLF'] 
 tt_components_extended = ['tt-vcb', 'ttbb', 'ttbj', 'tt2b', 'ttbb-dps', 'ttbj-dps', 'tt2b-dps', 'ttcc', 'ttcj', 'tt2c', 'ttLF', 'ttZ', 'ttW', 'ttHbb', 'ttHcc'] 
 tt_components_reduced = ['tt-vcb', 'ttZ', 'ttW', 'ttHbb', 'ttHcc'] 
@@ -90,19 +91,18 @@ else:
 if year == '2024':
     cb.cp().AddSyst(cb, 'CMS_lumi_13p6TeV_2024', 'lnN', ch.SystMap()(1.016)),
     #cb.cp().process(signal).AddSyst(cb, 'effi', 'lnN', ch.SystMap()((1.002)))
-    cb.cp().process(['singletop']).AddSyst(cb, 'norm_singletop', 'lnN', ch.SystMap()((1.02))) # 2% following https://twiki.cern.ch/twiki/bin/view/LHCPhysics/SingleTopNNLORef
-    cb.cp().process(['ttW']).AddSyst(cb, 'norm_ttW', 'lnN', ch.SystMap()((1.07))) # JHEP 05 (2024) 131
-    cb.cp().process(['ttZ']).AddSyst(cb, 'norm_ttZ', 'lnN', ch.SystMap()((1.07))) # JHEP 07 (2024) 163
+    cb.cp().process(['singletop']).AddSyst(cb, 'norm_singletop', 'lnN', ch.SystMap()((1.25))) # A sentimento
+    cb.cp().process(['ttW']).AddSyst(cb, 'norm_ttW', 'lnN', ch.SystMap()((1.068))) # PRL 131 (2023) 231901
+    cb.cp().process(['ttZ']).AddSyst(cb, 'norm_ttZ', 'lnN', ch.SystMap()((1.096,1.085))) # EPJC 80 (2020) 428
     cb.cp().process(tt_components_bbdps).AddSyst(cb, 'norm_ttbb-dps', 'lnN', ch.SystMap()((1.50))) # 50% uncertainty on the DPS contribution
     #Find appropriate uncertainties for the following lnN nuisances
-    cb.cp().process(ttH_components).AddSyst(cb, 'norm_ttH', 'lnN', ch.SystMap()((1.20)))
-    cb.cp().process(['diboson']).AddSyst(cb, 'norm_diboson', 'lnN', ch.SystMap()((1.05))) # WW: PLB 861 (2025) 139231, WZ: JHEP 04 (2025) 115
-    cb.cp().process(['wjets']).AddSyst(cb, 'norm_wjets', 'lnN', ch.SystMap()(1.02)) # JHEP 01 (2026) 047.
+    cb.cp().process(ttH_components).AddSyst(cb, 'norm_ttH', 'lnN', ch.SystMap()((1.20))) # Slightly conservative wrt numbers at 13 TeV in https://twiki.cern.ch/twiki/bin/view/LHCPhysics/CERNYellowReportPageAt13TeV
+    cb.cp().process(['diboson']).AddSyst(cb, 'norm_diboson', 'lnN', ch.SystMap()((1.30))) # A sentimento
+    cb.cp().process(['wjets']).AddSyst(cb, 'norm_wjets', 'lnN', ch.SystMap()(1.30)) # A sentimento
 
 for proc in tt_components_mainBkg_nodps:
     cb.cp().process([proc]).AddSyst(cb, f"xsec_{proc}", 'rateParam', ch.SystMap()(1.0))
-#cb.cp().bin(["Vcb_catWcb_SR"]).process([signal]).AddSyst(cb, "Vcb2", 'rateParam', ch.SystMap()(0.0016))
-
+    #cb.cp().process([proc]).AddSyst(cb, f"xsec_{proc}", 'lnN', ch.SystMap()(1.5))
 
 
 
@@ -137,7 +137,7 @@ shapeSysts = {
     'CMS_elScale' : all_procs,
     'CMS_muSmear' : all_procs,
     'CMS_muScale' : all_procs,
-    #Flavor tagging
+    # Flavor tagging
     'CMS_flavTag_xsec_ttbar': all_procs,
     'CMS_flavTag_xsec_wjets_c': all_procs,
     'CMS_flavTag_xsec_wjets_b': all_procs,
@@ -225,8 +225,12 @@ shapeSysts = {
     'jer' : all_procs,
     'met' : all_procs,
     'tune_CP5' : signal,
-    'CR1' : signal_and_ttbb,
-    'CR2' : signal_and_ttbb,
+    #'CR1' : signal_and_ttbb,
+    #'CR2' : signal_and_ttbb,
+    'CR1' : signal,
+    'CR2' : signal,
+    'bFragWeight_%s' % year: tt_components_extended,
+    #'bFragPetersonWeight' : tt_components_extended,
 }
 
 #Above here, perhaps it should be something like  'LHE_muF_%s%s' % year %tt_component: tt_components, for tt_component in tt_components
@@ -241,11 +245,11 @@ for proc in tt_components_nobb:
     print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
     cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
 
-per_process_systematics = ['bFragWeight', 'LHE_muF', 'LHE_muR', 'PS_fsr_G2GG_muR', 'PS_isr_G2GG_muR', 
+per_process_systematics = ['LHE_muF', 'LHE_muR', 'PS_fsr_G2GG_muR', 'PS_isr_G2GG_muR', 
                            'PS_fsr_G2QQ_muR', 'PS_isr_G2QQ_muR', 'PS_fsr_Q2QG_muR', 'PS_isr_Q2QG_muR', 
                            'PS_fsr_X2XG_muR', 'PS_isr_X2XG_muR', 'PS_fsr_G2GG_cNS', 'PS_isr_G2GG_cNS',
                            'PS_fsr_G2QQ_cNS', 'PS_isr_G2QQ_cNS', 'PS_fsr_G2QG_cNS', 'PS_isr_G2QG_cNS',
-                           'PS_fsr_X2XG_cNS', 'PS_isr_X2XG_cNS','bFragPetersonWeight']
+                           'PS_fsr_X2XG_cNS', 'PS_isr_X2XG_cNS']#, 'bFragWeight']#, 'bFragPetersonWeight']
 
 for proc in tt_components_extended:
     for var in per_process_systematics:
@@ -253,17 +257,12 @@ for proc in tt_components_extended:
         print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
         cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
 
-#for proc in tt_components_reduced:
-#    for var in ['LHE_muF_v1', 'LHE_muR_v1', 'PS_ISR_v1', 'PS_FSR_v1']:
-#        syst_name = f"{var}_{proc}_{year}"
-#        print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
-#        cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
-##For ttbar and ttbb backgrounds, use a special subprocess-dependent renormalization
-#for proc in tt_components_mainBkg:
-#    for var in ['LHE_muF_v2', 'LHE_muR_v2', 'PS_ISR_v2', 'PS_FSR_v2']:
-#        syst_name = f"{var}_{proc}_{year}"
-#        print(f"Adding process-dependent systematic: {syst_name} for process: {proc}")
-#        cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
+per_process_systematics_minorBkg = ["LHE_muF", "LHE_muR", "minorBkg_PS_ISR", "minorBkg_PS_FSR"]
+for proc in minorBkg_components:
+    for var in per_process_systematics_minorBkg:
+        syst_name = f"{var}_{proc}_{year}"
+        print(f"Adding process-dependent systematic: {syst_name} for minor backgrounds")
+        cb.cp().process([proc]).AddSyst(cb, syst_name, 'shape', ch.SystMap()(1.0))
 
 for bin in bins:
     print(f"Extracting shapes for bin {bin} from file {inputfiles[bin]}")

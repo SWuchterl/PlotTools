@@ -53,6 +53,9 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
     # Loop through input files and plot histograms
     for infile in input_files:
 
+        if "h_QCD" in infile:
+            continue #Skip QCD multijet for now
+
         # Exctract process name from file name
         proc_name_raw = os.path.basename(infile).replace('.root', '').replace('h_', '')
         
@@ -123,7 +126,7 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
         ax.hist(bin_edges[:-1], bins=bin_edges, weights=y, histtype='step', 
                 label=proc_name_display, linewidth=2, color=color)
 
-    # Plotta la somma dei background
+    # Plot the sum of backgrounds
     if sum_of_backgrounds is not None and sum_of_backgrounds.Integral() > 0:
         sum_of_backgrounds.Scale(normalization / sum_of_backgrounds.Integral())
         bin_edges = [sum_of_backgrounds.GetBinLowEdge(i) for i in range(1, sum_of_backgrounds.GetNbinsX() + 2)]
@@ -355,6 +358,9 @@ def plot_purity(input_files, output_dir):
         if "Data" in infile:
             continue
 
+        if "h_QCD" in infile:
+            continue #Skip QCD multijet for now
+
         # Open the file
         root_file = ROOT.TFile.Open(infile)
         if not root_file or root_file.IsZombie():
@@ -454,6 +460,9 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
 
         if "Data" in infile:
             continue
+
+        if "h_QCD" in infile:
+            continue #Skip QCD multijet for now
 
         # Open the file
         root_file = ROOT.TFile.Open(infile)
@@ -585,6 +594,9 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
         if "Data" in infile:
             continue
 
+        if "h_QCD" in infile:
+            continue #Skip QCD multijet for now
+
         # Open the file
         root_file = ROOT.TFile.Open(infile)
         if not root_file or root_file.IsZombie():
@@ -712,6 +724,9 @@ def compare_4F5F_vs_score(input_files, output_dir, process):
     
     for infile in input_files:
         print(f"Processing file: {infile}")
+
+        if "QCD_tree" in infile:
+            continue #Skip QCD multijet for now
 
         if process == "ttbx":
             if not "bb" in infile and not "bj" in infile and not "2b" in infile:

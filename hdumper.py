@@ -14,6 +14,8 @@ ROOT.TTreeCache.SetLearnEntries(200)
 ROOT.gEnv.SetValue("TFile.AsyncPrefetching", 2)
 ROOT.TH1.SetDefaultSumw2(True)
 
+suffix_dict = {'base' : '', 'ttLF' : '_0', 'ttcj' : '_41', 'tt2c' : '_42', 'ttcc' : '_43', 'ttbj' : '_51', 'tt2b' : '_52', 'ttbb' : '_53'}
+
 def add_overflow_underflow(hist):
     """
     Add underflow (bin 0) to first bin and overflow (bin N+1) to last bin.
@@ -122,6 +124,16 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
     local_total_MC_events = 0
     local_events_in_category = {key: 0 for key in selections.keys() if not key == "base"}
 
+    flavTag_renormalization = {"base": "*1",
+                               "ttbb": "*0.9393",
+                               "tt2b": "*1.0024",
+                               "ttbj": "*0.9541",
+                               "ttcc": "*0.9908",
+                               "tt2c": "*0.9388",
+                               "ttcj": "*1.0094",
+                               "ttLF": "*0.9974"
+                               }
+
     histograms = {}
     # Process each selection-output combinations
     for selection_name in selections:
@@ -142,10 +154,13 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
             if any(x in selection_name for x in tt_strings) and not "powheg" in infile:
                 continue
 
-        suffix = {'base' : '', 'ttLF' : '_0', 'ttcj' : '_41', 'tt2c' : '_42', 'ttcc' : '_43', 'tt2b' : '_51', 'ttbj' : '_52', 'ttbb' : '_53'}[selection_name]
+        suffix = suffix_dict.get(selection_name, '')
 
         # Assign event weight based on data taking year and process type
         weight = assign_event_weight(year, infile, suffix)
+        #if not "data" in infile and not "Data" in infile:
+        #    weight = weight + flavTag_renormalization[selection_name] #FIXME
+        #    print(f"weight is {weight}")
 
         # Define a per-selection weight column to avoid re-defining the same column name
         weight_column = f"weight_{selection_name}"

@@ -1,10 +1,10 @@
 #!/bin/sh
 # Preselection score
 PROD_VERSION=07042026
-EXTRA_NAME=fscores_ttLFm0p1_rebinned
+EXTRA_NAME=fscores_ttLFm0p1_CRttWcbM0p2m0p8
 INPUT_DIR=histos_$PROD_VERSION/$EXTRA_NAME/
 OUTPUT_DIR=plots_$PROD_VERSION/$EXTRA_NAME/
-EXTRA_PATH=fscores_ttLFm0p1_rebinned
+EXTRA_PATH=fscores_ttLFm0p1_CRttWcbM0p2m0p8
 SIG_NORM=5
 CONFIG_FILE=configs/hconfig_fscores.csv
 

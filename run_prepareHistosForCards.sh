@@ -4,7 +4,7 @@ INPUT_DIR=/eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07042026_2024_1
 PROD_VERSION=07042026
 EXTRA_NAME=
 SYST_DIR=/eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07042026_syst_2024_1L_Wcb/
-OUTPUT_DIR=datacard_preparation_07042026_v2/
+OUTPUT_DIR=datacard_preparation_07042026_CRttWcbM0p2m0p8/
 YEAR=2024
 
 

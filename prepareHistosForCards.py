@@ -12,7 +12,11 @@ ROOT.gROOT.SetBatch(True)
 ROOT.TTreeCache.SetLearnEntries(100)
 ROOT.gEnv.SetValue("TFile.AsyncPrefetching", 1)
 
-def process_tree(infile, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning, perProcessSysts):
+suffix_dict = {'base' : '', 'ttLF' : '_0', 'ttcj' : '_41', 'tt2c' : '_42', 'ttcc' : '_43', 'ttbj' : '_51', 'tt2b' : '_52', 'ttbb' : '_53'}
+mc_processes_for_data_obs = ['tt-vcb', 'ttbb', 'ttbj', 'tt2b', 'ttbb-dps', 'ttbj-dps', 'tt2b-dps', 'ttcc', 'ttcj', 'tt2c', 'ttLF', 'singletop', 'wjets', 'ttZ', 'ttW', 'diboson', 'ttHbb', 'ttHcc']
+tt_5fs_replacement_processes = ['ttbb', 'ttbj', 'tt2b']
+
+def process_tree(infile, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning, perProcessSysts, mc_data_obs_5fs=False):
     """
     Processes a TTree, converts it to multiple TH1Ds for specified branches, and saves them to ROOT files.
 
@@ -78,12 +82,14 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
             continue
         if any(x in infile for x in tt_file_names) and "base" in selection_name:
             continue
-        if any(x in selection_name for x in tt4f_strings) and not "4f" in infile:
+        if any(x in selection_name for x in tt4f_strings) and not "4f" in infile and not (mc_data_obs_5fs and "powheg" in infile):
             continue
         if any(x in selection_name for x in tt_strings) and not "powheg" in infile:
             continue
 
-        suffix = {'base' : '', 'ttLF' : '_0', 'ttcj' : '_41', 'tt2c' : '_42', 'ttcc' : '_43', 'tt2b' : '_51', 'ttbj' : '_52', 'ttbb' : '_53'}[selection_name]
+        is_5fs_proxy_selection = mc_data_obs_5fs and "powheg" in infile and any(x in selection_name for x in tt4f_strings)
+
+        suffix = suffix_dict.get(selection_name, '')
 
         # Add event selection for ttbar samples
         print(f"Events after base selection: {df.Count().GetValue()}")
@@ -101,10 +107,18 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
         systematics = produce_systematics(year, suffix)
 
         for syst in systematics.keys():
+            # For the optional MC-based data_obs, produce only nominal 5FS proxy templates.
+            if is_5fs_proxy_selection and syst != "None":
+                continue
+
             # Keep only the explicitly process-dependent nuisances for tt-like samples.
             # Use startswith to avoid catching unrelated names like CMS_flavTag_LHE_muF_*.
-            if any(syst.startswith(procDepSyst) for procDepSyst in perProcessSysts) and "tt" not in infile:
+            perProcessSystsWithoutLHEmuRmuF = [procDepSyst for procDepSyst in perProcessSysts if not (procDepSyst.startswith("LHE_muR") or procDepSyst.startswith("LHE_muF") or procDepSyst.startswith("minorBkg_PS_"))]
+            if any(syst.startswith(procDepSyst) for procDepSyst in perProcessSystsWithoutLHEmuRmuF) and "tt" not in infile:
                 continue # Skip certain systematics if the process is not a ttbar one (including signal, ttH, and ttV)
+            if syst.startswith("minorBkg") and "tt" in infile:
+                continue # Minor background systematics do not pertain to ttbar processes
+
             if syst == "None":
                 weight = assign_event_weight(year, suffix, infile)
             else:
@@ -123,6 +137,8 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
                 hist_name = infile.split('/')[-1].replace('_tree.root','')
                 if any(x in infile for x in tt_file_names) and "-dps" not in infile:
                     hist_name = selection_name
+                    if is_5fs_proxy_selection:
+                        hist_name = f"{hist_name}_5FS"
                 elif any(x in infile for x in tt_file_names) and "-dps" in infile:
                     hist_name = selection_name + "-dps"
                 
@@ -131,7 +147,7 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
                     if any(procDepSyst in syst for procDepSyst in perProcessSysts):
                         #print(f"Identified process-dependent systematic: {syst} for process: {hist_name}")
                         process_flag = hist_name.split('_')[0] # Assuming the process name is the first part of the histogram name
-                        new_syst_name = syst.replace(f"_{year}", f"_{process_flag}_{year}")
+                        new_syst_name = syst.replace(f"_{year}", f"_{process_flag}_{year}") if "bFrag" not in syst else syst
                         hist_name = f"{hist_name}_{new_syst_name}"
                         #print(f"Final hist_name: {hist_name}")
                         #print()
@@ -174,7 +190,7 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
 
 
 
-def process_trees_parallel(input_files, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nproc=1):
+def process_trees_parallel(input_files, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nproc=1, mc_data_obs_5fs=False):
 
     process_func = partial(
         process_tree, 
@@ -184,7 +200,8 @@ def process_trees_parallel(input_files, output_files, tree_name, year, selection
         selections=selections,
         adhoc_selection=adhoc_selection,
         adhoc_binning=adhoc_binning,
-        perProcessSysts=perProcessSysts
+        perProcessSysts=perProcessSysts,
+        mc_data_obs_5fs=mc_data_obs_5fs
     )
 
     # ROOT files are not safe for concurrent UPDATE writes from multiple processes.
@@ -240,6 +257,16 @@ def process_tree_extra_syst(infile, output_files, tree_name, year, selections, a
     tt4f_strings = ["ttbb", "ttbj", "tt2b"]
     tt_strings = ["ttcc", "ttcj", "tt2c", "ttLF"]
 
+    #flavTag_renormalization = {"base": "*1",
+    #                       "ttbb": "*0.9393",
+    #                       "tt2b": "*1.0024",
+    #                       "ttbj": "*0.9541",
+    #                       "ttcc": "*0.9908",
+    #                       "tt2c": "*0.9388",
+    #                       "ttcj": "*1.0094",
+    #                       "ttLF": "*0.9974"
+    #                       }
+
     histograms = {}
     for selection_name in selections:
         if not "base" in selection_name and not any(x in infile for x in tt_file_names):
@@ -251,7 +278,7 @@ def process_tree_extra_syst(infile, output_files, tree_name, year, selections, a
         if any(x in selection_name for x in tt_strings) and not "powheg" in infile:
             continue
 
-        suffix = {'base': '', 'ttLF': '_0', 'ttcj': '_41', 'tt2c': '_42', 'ttcc': '_43', 'tt2b': '_51', 'ttbj': '_52', 'ttbb': '_53'}[selection_name]
+        suffix = suffix_dict.get(selection_name, '')
 
         if not "base" in selection_name:
             ttbar_event_selection = f"{selections[selection_name]}"
@@ -262,6 +289,11 @@ def process_tree_extra_syst(infile, output_files, tree_name, year, selections, a
         # Keep same weight convention as nominal histogram production.
         weight = assign_event_weight(year, suffix, infile)
         weight_column = f"weight_{selection_name}_{extra_syst_name}"
+
+        #if not "data" in infile and not "Data" in infile:
+        #    weight = weight + flavTag_renormalization[selection_name] #FIXME
+        #    print(f"weight is {weight}")
+
         if "data" not in infile and "Data" not in infile:
             df_selected = df_selected.Define(weight_column, weight)
         else:
@@ -420,17 +452,49 @@ def assign_event_weight(year, infile, suffix, syst=""):
     
     return weight
 
-def sum_data(output_files):
+def sum_data(output_files, mc_data_obs_5fs=False):
     for outfile in output_files:
         fIn = ROOT.TFile.Open(outfile, "UPDATE")
-        singlee_hist = fIn.Get("singlee")
-        singlemu_hist = fIn.Get("singlemu")
-        if not isinstance(singlee_hist, ROOT.TH1) or not isinstance(singlemu_hist, ROOT.TH1):
-            print(f"Error: 'singlee' or 'singlemu' in file '{outfile}' is not a histogram.")
+        if not fIn or fIn.IsZombie():
+            print(f"Error opening output file: {outfile}")
             continue
-        data_obs = singlee_hist.Clone("data_obs")
-        data_obs.SetDirectory(0)
-        data_obs.Add(singlemu_hist)
+
+        if mc_data_obs_5fs:
+            data_obs = None
+            for process in mc_processes_for_data_obs:
+                source_hist_name = process
+                if process in tt_5fs_replacement_processes:
+                    candidate_5fs = f"{process}_5FS"
+                    if isinstance(fIn.Get(candidate_5fs), ROOT.TH1):
+                        source_hist_name = candidate_5fs
+                    else:
+                        print(f"WARNING: {candidate_5fs} not found in {outfile}. Falling back to {process}.")
+
+                proc_hist = fIn.Get(source_hist_name)
+                if not isinstance(proc_hist, ROOT.TH1):
+                    continue
+
+                if data_obs is None:
+                    data_obs = proc_hist.Clone("data_obs")
+                    data_obs.SetDirectory(0)
+                else:
+                    data_obs.Add(proc_hist)
+
+            if data_obs is None:
+                print(f"Error: no MC histograms found to build data_obs in '{outfile}'.")
+                fIn.Close()
+                continue
+        else:
+            singlee_hist = fIn.Get("singlee")
+            singlemu_hist = fIn.Get("singlemu")
+            if not isinstance(singlee_hist, ROOT.TH1) or not isinstance(singlemu_hist, ROOT.TH1):
+                print(f"Error: 'singlee' or 'singlemu' in file '{outfile}' is not a histogram.")
+                fIn.Close()
+                continue
+            data_obs = singlee_hist.Clone("data_obs")
+            data_obs.SetDirectory(0)
+            data_obs.Add(singlemu_hist)
+
         fIn.cd()
         data_obs.Write("data_obs", ROOT.TObject.kOverwrite)
         #delete the singlee and singlemu histograms to save space
@@ -449,6 +513,7 @@ if __name__ == "__main__":
     parser.add_argument("--muon", nargs="?", const=1, type=bool, default=False, required=False, help="Process muon channel only.")
     parser.add_argument("--nproc", type=int, help="Number of worker processes. Use 1 to avoid concurrent ROOT file writes.")
     parser.add_argument("--extra_syst_dir", type=str,help="Directory containing extra shape systematics in per-systematic subfolders.")
+    parser.add_argument("--mc_data_obs_5fs", nargs="?", const=1, type=bool, default=False, required=False, help="Build data_obs from summed MC and use 5FS templates for ttbb/ttbj/tt2b when available.")
 
     args = parser.parse_args()
 
@@ -467,7 +532,8 @@ if __name__ == "__main__":
     print(f"Output files: {output_files}")
 
     # Define event selections. Some are process-specific.
-    selections = {"base": "n_ak4>=4 && (n_btagM+n_ctagM)>=3 && n_btagM>=1",
+    selections = {#"base": "n_ak4>=4 && (n_btagM+n_ctagM)>=3 && n_btagM>=1",
+                 "base": "n_ak4>=4 && (n_btagM+n_ctagM)>=3 && n_btagM>=2 && n_ctagM>=1",
                  "ttbb" : "genEventClassifier==9",
                  "ttbj" : "genEventClassifier==7",
                  "tt2b" : "genEventClassifier==8",
@@ -670,13 +736,24 @@ if __name__ == "__main__":
                    "topHdampWeight_%sDown" % year : f"TOPMLWeight[3]*TOPMLWeightNorm{suffix}[3]",
                    "bFragWeight_%sUp"   % year : f"(TOPMLWeight[4]*TOPMLWeightNorm{suffix}[4])/(TOPMLWeight[5]*TOPMLWeightNorm{suffix}[5])", #Divide by bFrag nominal and multiply by bFrag up
                    "bFragWeight_%sDown" % year : f"1/(TOPMLWeight[5]*TOPMLWeightNorm{suffix}[5])", #The standard samples are effectively bFrag down, so here just dividing by bFrag nominal and its renorm weight
-                   "bFragPetersonWeight_%sUp"   % year : f"bFragAndDecayWeight[3]*BFragAndDecayWeightNorm{suffix}[3]", #A one-sided systematic
+                   "bFragPetersonWeight_%sUp"   % year : f"(bFragAndDecayWeight[3]*BFragAndDecayWeightNorm{suffix}[3])/(TOPMLWeight[5]*TOPMLWeightNorm{suffix}[5])", #A one-sided systematic
                    "bFragPetersonWeight_%sDown" % year : f"1.", #Effectively a one-sided systematic
+                   # LHE for minor bkgs
+                   #"LHE_minorBkg_muF_%sUp" % year : "LHEScaleWeight[5]*LHEScaleWeightNorm[5]",
+                   #"LHE_minorBkg_muF_%sDown" % year : "LHEScaleWeight[3]*LHEScaleWeightNorm[3]",
+                   #"LHE_minorBkg_muR_%sUp" % year : "LHEScaleWeight[7]*LHEScaleWeightNorm[7]",
+                   #"LHE_minorBkg_muR_%sDown" % year : "LHEScaleWeight[1]*LHEScaleWeightNorm[1]",
+                   # LHE for large bkgs
                    "LHE_muF_%sUp"   % year : f"LHEScaleWeight[5]*LHEScaleWeightNorm{suffix}[5]",
                    "LHE_muF_%sDown" % year : f"LHEScaleWeight[3]*LHEScaleWeightNorm{suffix}[3]",
                    "LHE_muR_%sUp"   % year : f"LHEScaleWeight[7]*LHEScaleWeightNorm{suffix}[7]",
                    "LHE_muR_%sDown" % year : f"LHEScaleWeight[1]*LHEScaleWeightNorm{suffix}[1]",
-                   # PS-fsr
+                   # PS for minor bkgs
+                   "minorBkg_PS_ISR_%sUp"   % year : f"PSWeight[0]*PSWeightNorm{suffix}[0]",
+                   "minorBkg_PS_ISR_%sDown" % year : f"PSWeight[2]*PSWeightNorm{suffix}[2]",
+                   "minorBkg_PS_FSR_%sUp"   % year : f"PSWeight[1]*PSWeightNorm{suffix}[1]",
+                   "minorBkg_PS_FSR_%sDown" % year : f"PSWeight[3]*PSWeightNorm{suffix}[3]",
+                   # PS-fsr for large bkgs
                    "PS_fsr_G2GG_muR_%sDown" %year : f"PSWeight[6]*PSWeightNorm{suffix}[6]",
                    "PS_fsr_G2GG_muR_%sUp"   %year : f"PSWeight[7]*PSWeightNorm{suffix}[7]",
                    "PS_fsr_G2QQ_muR_%sDown" %year : f"PSWeight[8]*PSWeightNorm{suffix}[8]",
@@ -693,7 +770,7 @@ if __name__ == "__main__":
                    "PS_fsr_G2QG_cNS_%sUp"   %year : f"PSWeight[19]*PSWeightNorm{suffix}[19]",
                    "PS_fsr_X2XG_cNS_%sDown" %year : f"PSWeight[20]*PSWeightNorm{suffix}[20]",
                    "PS_fsr_X2XG_cNS_%sUp"   %year : f"PSWeight[21]*PSWeightNorm{suffix}[21]",
-                   # PS-isr
+                   # PS-isr for large bkgs
                    "PS_isr_G2GG_muR_%sDown" %year : f"PSWeight[28]*PSWeightNorm{suffix}[28]",
                    "PS_isr_G2GG_muR_%sUp"   %year : f"PSWeight[29]*PSWeightNorm{suffix}[29]",
                    "PS_isr_G2QQ_muR_%sDown" %year : f"PSWeight[30]*PSWeightNorm{suffix}[30]",
@@ -714,11 +791,11 @@ if __name__ == "__main__":
         
         return systematics
 
-    perProcessSysts = ["topHdampWeight_", "bFragWeight_", "bFragPetersonWeight_", "LHE_muF_", "LHE_muR_", "PS_fsr_", "PS_isr_"]
+    perProcessSysts = ["topHdampWeight_", "bFragWeight_", "bFragPetersonWeight_", "LHE_muF_", "LHE_muR_", "PS_fsr_", "PS_isr_", "minorBkg_PS_ISR_", "minorBkg_PS_FSR_"]
 
     nprocs = args.nproc if args.nproc else len(input_files)
 
-    process_trees_parallel(input_files, output_files, args.tree_name, args.year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nprocs)
+    process_trees_parallel(input_files, output_files, args.tree_name, args.year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nprocs, args.mc_data_obs_5fs)
 
     add_extra_systematic_histograms(
         args.extra_syst_dir,
@@ -730,5 +807,5 @@ if __name__ == "__main__":
         adhoc_binning,
     )
 
-    sum_data(output_files)
+    sum_data(output_files, args.mc_data_obs_5fs)
     print(f"All done!")
