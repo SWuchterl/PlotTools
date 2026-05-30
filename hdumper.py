@@ -379,7 +379,7 @@ if __name__ == "__main__":
     # Prepare histogram configurations for each branch
     hist_configs = read_csv(args.input_csv)
 
-    selections = {"base": "n_ak4>=4 && (n_btagM+n_ctagM)>=3 && n_btagM>=1", #"base": "n_ak4>=4 && (n_btagM+n_ctagM)>=3 && n_btagM>=1 && n_ctagT>=1"
+    selections = {"base": "n_ak4>=4 && n_btagM>=2 && n_ctagM>=1",
                  "ttbb" : "genEventClassifier==9",
                  "ttbj" : "genEventClassifier==7",
                  "tt2b" : "genEventClassifier==8",

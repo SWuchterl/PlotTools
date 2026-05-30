@@ -13,7 +13,7 @@ ROOT.TTreeCache.SetLearnEntries(100)
 ROOT.gEnv.SetValue("TFile.AsyncPrefetching", 1)
 
 suffix_dict = {'base' : '', 'ttLF' : '_0', 'ttcj' : '_41', 'tt2c' : '_42', 'ttcc' : '_43', 'ttbj' : '_51', 'tt2b' : '_52', 'ttbb' : '_53'}
-mc_processes_for_data_obs = ['tt-vcb', 'ttbb', 'ttbj', 'tt2b', 'ttbb-dps', 'ttbj-dps', 'tt2b-dps', 'ttcc', 'ttcj', 'tt2c', 'ttLF', 'singletop', 'wjets', 'ttZ', 'ttW', 'diboson', 'ttHbb', 'ttHcc']
+mc_processes_for_data_obs = ['tt-vcb', 'ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj', 'tt2c', 'ttLF', 'singletop', 'wjets', 'ttZ', 'ttW', 'diboson', 'ttHbb', 'ttHcc']
 tt_5fs_replacement_processes = ['ttbb', 'ttbj', 'tt2b']
 
 def process_tree(infile, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning, perProcessSysts, mc_data_obs_5fs=False):

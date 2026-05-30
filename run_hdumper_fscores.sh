@@ -3,7 +3,7 @@
 INPUT_DIR=/eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07042026_2024_1L_Wcb/
 PROD_VERSION=07042026
 CONFIG_FILE=configs/hconfig_fscores.csv
-EXTRA_NAME=fscores_ttLFm0p1_CRttWcbM0p2m0p8
+EXTRA_NAME=fscores_ttLFm0p1_ge2bge1c
 OUTPUT_DIR=histos_$PROD_VERSION/$EXTRA_NAME/
 YEAR=2024
 

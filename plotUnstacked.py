@@ -655,16 +655,16 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
     width = 0.35  # the width of the bars
 
     fig, (ax, ax_ratio) = plt.subplots(2, 1, figsize=(10, 12), 
-                                       gridspec_kw={'height_ratios': [3, 1],  # proporzione 3:1 tra i plot
-                                                   'hspace': 0.05})  # spazio minimo tra i plot
+                                       gridspec_kw={'height_ratios': [3, 1], 
+                                                   'hspace': 0.05})  
     
     hep.cms.label("Work in progress", loc=2, ax=ax, lumi="110", com="13.6")
     
-    # Plot principale sui dati
+    # Main plot
     bars4F = ax.bar(x - width/2, values_4F, width, label=process + ' 4FS', color='blue', alpha=0.7)
     bars5F = ax.bar(x + width/2, values_5F, width, label=process + ' 5FS', color='red', alpha=0.7)
     
-    # Configurazione plot principale
+    # Main plot config
     ax.legend(loc='upper right')
     ax.text(0.72, 0.64,'AR\n' + '$N_{\mathrm{jet}} > 3$' + '\n' + '$N_{\mathrm{bjet}} > 0$' + '\n' + '$N_{\mathrm{b/cjet}} > 2$', 
             transform=ax.transAxes, fontsize=20)
