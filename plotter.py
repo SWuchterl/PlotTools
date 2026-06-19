@@ -9,13 +9,14 @@ import cmsstyle as CMS
 ROOT.TH1.SetDefaultSumw2(True)
 ROOT.gROOT.SetBatch(True)
 
-def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, blind):
+def stack_histograms(input_files, hist_name, syst_list, output_dir, sonly, sig_norm, log, blind, verbosity):
     """
     Reads TH1Ds with the same name from multiple files, stacks them in a THStack, and saves the result.
 
     Parameters:
     - input_dir: Input directory, where ROOT files are located.
     - hist_name: Name of the histograms to stack.
+    - syst_list: List of systematic uncertainties to include in the plots.
     - output_dir: Output directory for the TCanvas containing THStacks.
     - sonly: Decide whether to plot only the signal.
     - sig_norm: Normalization of the signal.
@@ -25,6 +26,9 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
     # Create a THStack and a dictionary {process name : histogram} to feed to the CMS plotting
     stack = ROOT.THStack("stack", f"Stack of {hist_name}")
     phys_process = dict()
+    hist_total = None
+    bin_errors_down = None
+    bin_errors_up = None
 
     # Define X-axis boundaries for the stack
     x_low, x_high = 0., 1.
@@ -45,14 +49,15 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
         if sonly and "vcb" not in infile:
             continue
 
-        print(f"Reading file: {infile}")
+        if verbosity > 0:
+            print(f"Reading file: {infile}")
 
         # Open the file
         root_file = ROOT.TFile.Open(infile)
         if not root_file or root_file.IsZombie():
             raise FileNotFoundError(f"Could not open file: {infile}")
 
-        # Retrieve the histogram
+        # Retrieve the nominal histogram
         hist = root_file.Get(hist_name)
         if not hist or not isinstance(hist, ROOT.TH1):
             raise ValueError(f"Histogram '{hist_name}' not found in file '{infile}'.")
@@ -64,6 +69,23 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
         # Assign X-axis boundaries for the stack
         x_low = hist_clone.GetBinLowEdge(1)
         x_high = hist_clone.GetBinLowEdge(hist_clone.GetNbinsX() + 1)
+
+        infile_short = infile.split("/")[-1]
+        if "Data" not in infile_short:
+            if hist_total is None:
+                hist_total = hist.Clone()
+                hist_total.SetDirectory(0) # Detach from the file
+            else:
+                hist_total.Add(hist_clone)
+
+        # Get bin midpoints, width from the histogram
+        binwidths = ROOT.TVectorF(hist_clone.GetNbinsX())
+        midpoints = ROOT.TVectorF(hist_clone.GetNbinsX())
+        for i in range(1, hist_clone.GetNbinsX() + 1):
+            low = hist_clone.GetBinLowEdge(i)
+            high = hist_clone.GetBinLowEdge(i + 1)
+            binwidths[i - 1] = (high - low) / 2.0
+            midpoints[i - 1] = (low + high) / 2.0
 
         # Treat the signal sample separately (it will be added also as a dashed line to the plots)
         if "vcb" in infile:
@@ -81,20 +103,78 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
         # Fill dictionary {process name : histogram} to feed to the CMS plotting
         phys_process_name = (infile.split('_')[-1]).replace('.root', '').replace('-vcb', 'Wcb')
         phys_process[phys_process_name] = hist_clone
-        # Sort processes from largest to smallest
-        phys_process = {
-            key: value
-            for key, value in sorted(
-                phys_process.items(),
-                key=lambda item: item[1].Integral(),
-            )
-        }
+
+        if bin_errors_down is None:
+            bin_errors_down = ROOT.TVectorF(hist_clone.GetNbinsX())
+            bin_errors_up = ROOT.TVectorF(hist_clone.GetNbinsX())
+            for i in range(1, hist_clone.GetNbinsX() + 1):
+                bin_errors_down[i - 1] = 0.0
+                bin_errors_up[i - 1] = 0.0
+
+        # Get the statistical uncertainties on the nominal histogram
+        for i in range(1, hist_clone.GetNbinsX() + 1):
+            bin_errors_down[i - 1] = bin_errors_down[i - 1] + hist_clone.GetBinError(i) * hist_clone.GetBinError(i)
+            bin_errors_up[i - 1] = bin_errors_up[i - 1] + hist_clone.GetBinError(i) * hist_clone.GetBinError(i)
+
+        for syst in syst_list:
+            # Retrieve the systematic variation histograms
+            found = True
+            hist_syst_down = root_file.Get(f"{hist_name}_{syst}Down")
+            if not hist_syst_down or not isinstance(hist_syst_down, ROOT.TH1):
+                if verbosity > 1:
+                    print(f"WARNING: Histogram '{hist_name}_{syst}Down' not found in file '{infile_short}'.")
+                found = False
+            hist_syst_up = root_file.Get(f"{hist_name}_{syst}Up")
+            if not hist_syst_up or not isinstance(hist_syst_up, ROOT.TH1):
+                if verbosity > 1:
+                    print(f"WARNING: Histogram '{hist_name}_{syst}Up' not found in file '{infile_short}'.")
+                found = False
+            if not found:
+                if verbosity > 0:
+                    print(
+                        f"WARNING: Skipping '{hist_name}_{syst}Down' / '{hist_name}_{syst}Up' for {infile_short}."
+                    )
+                continue
+
+            # Clone the histogram to avoid issues when the file is closed
+            hist_syst_down_clone = hist_syst_down.Clone()
+            hist_syst_down_clone.SetDirectory(0) # Detach from the file
+            hist_syst_up_clone = hist_syst_up.Clone()
+            hist_syst_up_clone.SetDirectory(0) # Detach from the file
+
+            if hist_clone.GetNbinsX() != hist_syst_down_clone.GetNbinsX():
+                raise RuntimeError(
+                    f"'{hist_name}_{syst}Down' has a different number of bins from the nominal histogram."
+                )
+            if hist_clone.GetNbinsX() != hist_syst_up_clone.GetNbinsX():
+                raise RuntimeError(
+                    f"'{hist_name}_{syst}Up' has a different number of bins from the nominal histogram."
+                )
+
+            for i in range(1, hist_clone.GetNbinsX() + 1):
+                diff = hist_clone.GetBinContent(i) - hist_syst_down_clone.GetBinContent(i)
+                bin_errors_down[i - 1] += diff * diff
+                diff = hist_syst_up_clone.GetBinContent(i) - hist_clone.GetBinContent(i)
+                bin_errors_up[i - 1] += diff * diff
 
         # Close the file
         root_file.Close()
 
+    for i in range(len(bin_errors_down)):
+        bin_errors_down[i] = math.sqrt(bin_errors_down[i])
+        bin_errors_up[i] = math.sqrt(bin_errors_up[i])
+
+    # Sort processes from largest to smallest
+    phys_process = {
+        key: value
+        for key, value in sorted(
+            phys_process.items(),
+            key=lambda item: item[1].Integral(),
+        )
+    }
+
     # Save the stack in a canvas and add a legend
-    print(f"Saving stacked histograms as: {output_dir}{hist_name.replace('h_', '')}.pdf/.png")
+    print(f"Saving stacked histograms as: {output_dir}{hist_name.replace('h_', '')}.pdf / .png")
     canvas = CMS.cmsDiCanvas(
         'canvas',
         x_low,
@@ -146,6 +226,11 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
         CMS.cmsDraw(sig_hist, "same, hist", msize=0, fcolor=ROOT.kRed, lcolor=ROOT.kRed, fstyle=3018)
     CMS.cmsDraw(data_hist, "E1X0", mcolor=ROOT.kBlack)
 
+    # Get y values of MC stack
+    y_stack = ROOT.TVectorF(hist_total.GetNbinsX())
+    for i in range(1, hist_total.GetNbinsX() + 1):
+        y_stack[i - 1] = hist_total.GetBinContent(i)
+
     # Set Y-axis range based on maximum value of stacked histograms
     hist_from_canvas = CMS.GetcmsCanvasHist(canvas.GetPad(1))
     hist_from_canvas.GetYaxis().SetRangeUser(
@@ -186,33 +271,69 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
         )
         legend.AddEntry(err_hist, "Stat. Unc.", "f")
 
+        asym_errors = ROOT.TGraphAsymmErrors(
+            midpoints,
+            y_stack,
+            binwidths,
+            binwidths,
+            bin_errors_down,
+            bin_errors_up,
+        )
+        asym_errors.SetFillColor(ROOT.kBlack)
+        asym_errors.SetFillStyle(3005)
+        asym_errors.Draw("e2same0")
+        legend.AddEntry(asym_errors, "Stat.#oplusSyst.", "f")
+
         # Ratio plot
         canvas.cd(2)
         ratio = data_hist.Clone("ratio")
         ratio.Divide(bkg_hist)
 
         for i in range(1, ratio.GetNbinsX() + 1):
-            if(ratio.GetBinContent(i)):
+            if ratio.GetBinContent(i):
                 ratio.SetBinError(i, math.sqrt(data_hist.GetBinContent(i)) / bkg_hist.GetBinContent(i))
             else:
                 ratio.SetBinError(i, 10**(-99))
 
-        prediction_ratio = bkg_hist.Clone()
-        prediction_ratio.Divide(bkg_hist)
-        CMS.cmsDraw(
-            prediction_ratio,
-            "e2same0",
-            lwidth=100,
-            msize=0,
-            fcolor=ROOT.kBlack,
-            fstyle=3004,
+        rel_err_y = ROOT.TVectorF(hist_total.GetNbinsX())
+        rel_err_down = ROOT.TVectorF(hist_total.GetNbinsX())
+        rel_err_up = ROOT.TVectorF(hist_total.GetNbinsX())
+        for i in range(1, hist_total.GetNbinsX() + 1):
+            rel_err_y[i - 1] = 1.0
+            if y_stack[i - 1]:
+                rel_err_down[i - 1] = bin_errors_down[i - 1] / y_stack[i - 1]
+                rel_err_up[i - 1] = bin_errors_up[i - 1] / y_stack[i - 1]
+            else:
+                rel_err_down[i - 1] = 10**(-99)
+                rel_err_up[i - 1] = 10**(-99)
+        asym_errors_ratio = ROOT.TGraphAsymmErrors(
+            midpoints,
+            rel_err_y,
+            binwidths,
+            binwidths,
+            rel_err_down,
+            rel_err_up,
         )
+        asym_errors_ratio.SetFillColor(ROOT.kBlack)
+        asym_errors_ratio.SetFillStyle(3005)
+        asym_errors_ratio.Draw("e2same0")
+
+        # prediction_ratio = bkg_hist.Clone()
+        # prediction_ratio.Divide(bkg_hist)
+        # CMS.cmsDraw(
+        #     prediction_ratio,
+        #     "e2same0",
+        #     lwidth=100,
+        #     msize=0,
+        #     fcolor=ROOT.kBlack,
+        #     fstyle=3004,
+        # )
         if not isBlind:
             CMS.cmsDraw(ratio, "E1X0", mcolor=ROOT.kBlack)
         ref_line = ROOT.TLine(x_low, 1, x_high, 1)
         CMS.cmsDrawLine(ref_line, lcolor=ROOT.kBlack, lstyle=ROOT.kDotted)
         ratio_from_canvas = CMS.GetcmsCanvasHist(canvas.GetPad(2))
-        ratio_from_canvas.GetYaxis().SetRangeUser(0.5, 1.5)
+        ratio_from_canvas.GetYaxis().SetRangeUser(0.0, 2.0)
 
         # Ratio plot
         # canvas.cd(2)
@@ -252,8 +373,8 @@ def stack_histograms(input_files, hist_name, output_dir, sonly, sig_norm, log, b
         if not log else
         f"{output_dir}/log/{hist_name.replace('h_', '')}"
     )
-    CMS.SaveCanvas(canvas,f"{plot_name}.png", False) # The False is needed not to close the canvas
-    CMS.SaveCanvas(canvas,f"{plot_name}.pdf", False)
+    CMS.SaveCanvas(canvas, f"{plot_name}.png", False) # The False is needed not to close the canvas
+    CMS.SaveCanvas(canvas, f"{plot_name}.pdf", False)
     print()
 
 def create_output_dir(output_dir, log):
@@ -279,8 +400,8 @@ def read_csv(csv_file):
     with open(csv_file, mode='r') as f:
         csv_reader = csv.reader(f)
         hist_list = [line[0] for line in csv_reader if not line[0]=='Variable']
-        hist_list = [f"h_{hist}" for hist in hist_list]
-
+        if "systs" not in csv_file:
+            hist_list = [f"h_{hist}" for hist in hist_list]
     return hist_list
 
 if __name__ == "__main__":
@@ -301,6 +422,13 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help="The csv file to read variables and ranges from.",
+    )
+    parser.add_argument(
+        "--systs_csv",
+        type=str,
+        default="configs/systs.csv",
+        required=False,
+        help="The csv file to read a list of systematics from.",
     )
     parser.add_argument(
         "--output_dir",
@@ -343,6 +471,13 @@ if __name__ == "__main__":
         required=False,
         help="Decide whether to blind the data in a certain histogram.",
     )
+    parser.add_argument(
+        "--verbosity",
+        type=int,
+        default=0,
+        required=False,
+        help="The verbosity, for debugging.",
+    )
 
     args = parser.parse_args()
 
@@ -361,25 +496,30 @@ if __name__ == "__main__":
     create_output_dir(args.output_dir, args.log)
 
     # Plot either all histograms from the csv file or a single histogram
+    syst_list = read_csv(args.systs_csv)
     if not args.hist_name:
         hist_list = read_csv(args.input_csv)
         for hist_name in hist_list:
             stack_histograms(
                 input_files,
                 hist_name,
+                syst_list,
                 args.output_dir,
                 args.sonly,
                 args.sig_norm,
                 args.log,
                 args.blind,
+                args.verbosity,
             )
     else:
         stack_histograms(
             input_files,
             args.hist_name,
+            syst_list,
             args.output_dir,
             args.sonly,
             args.sig_norm,
             args.log,
             args.blind,
+            args.verbosity,
         )
