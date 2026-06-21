@@ -9,13 +9,27 @@ import cmsstyle as CMS
 ROOT.TH1.SetDefaultSumw2(True)
 ROOT.gROOT.SetBatch(True)
 
-def stack_histograms(input_files, hist_name, syst_list, output_dir, sonly, sig_norm, log, blind, verbosity):
+def stack_histograms(
+        input_files,
+        hist_name,
+        syst_list,
+        output_dir,
+        sonly,
+        sig_norm,
+        log,
+        blind,
+        verbosity,
+        x_low = None,
+        x_high = None,
+    ):
     """
     Reads TH1Ds with the same name from multiple files, stacks them in a THStack, and saves the result.
 
     Parameters:
     - input_dir: Input directory, where ROOT files are located.
     - hist_name: Name of the histograms to stack.
+    - x_low: lower x axis bound for plotting
+    - x_high: upper x axis bound for plotting
     - syst_list: List of systematic uncertainties to include in the plots.
     - output_dir: Output directory for the TCanvas containing THStacks.
     - sonly: Decide whether to plot only the signal.
@@ -31,7 +45,7 @@ def stack_histograms(input_files, hist_name, syst_list, output_dir, sonly, sig_n
     bin_errors_up = None
 
     # Define X-axis boundaries for the stack
-    x_low, x_high = 0., 1.
+    # x_low, x_high = 0., 1.
 
     # Create a histogram for the signal and the collision data to be added separately from the stack
     sig_hist = ROOT.TH1D()
@@ -67,8 +81,10 @@ def stack_histograms(input_files, hist_name, syst_list, output_dir, sonly, sig_n
         hist_clone.SetDirectory(0) # Detach from the file
 
         # Assign X-axis boundaries for the stack
-        x_low = hist_clone.GetBinLowEdge(1)
-        x_high = hist_clone.GetBinLowEdge(hist_clone.GetNbinsX() + 1)
+        if x_low is None:
+            x_low = hist_clone.GetBinLowEdge(1)
+        if x_high is None:
+            x_high = hist_clone.GetBinLowEdge(hist_clone.GetNbinsX() + 1)
 
         infile_short = infile.split("/")[-1]
         if "Data" not in infile_short:
@@ -235,7 +251,7 @@ def stack_histograms(input_files, hist_name, syst_list, output_dir, sonly, sig_n
     hist_from_canvas = CMS.GetcmsCanvasHist(canvas.GetPad(1))
     hist_from_canvas.GetYaxis().SetRangeUser(
         0.0,
-        max(stack.GetHistogram().GetMaximum(), data_hist.GetMaximum()) * 1.4,
+        max(stack.GetHistogram().GetMaximum(), data_hist.GetMaximum()) * 1.9,
     )
     if sonly:
         hist_from_canvas.GetYaxis().SetRangeUser(0.01, sig_hist.GetMaximum() * 1.2)
@@ -248,7 +264,7 @@ def stack_histograms(input_files, hist_name, syst_list, output_dir, sonly, sig_n
         ROOT.gPad.SetLogy()
         hist_from_canvas.GetYaxis().SetRangeUser(
             0.1,
-            max(stack.GetHistogram().GetMaximum(), data_hist.GetMaximum()) * 1e3,
+            max(stack.GetHistogram().GetMaximum(), data_hist.GetMaximum()) * 0.3e4,
         )
         if sonly:
             hist_from_canvas.GetYaxis().SetRangeUser(
@@ -263,11 +279,12 @@ def stack_histograms(input_files, hist_name, syst_list, output_dir, sonly, sig_n
         CMS.cmsDraw(
             err_hist,
             "e2same0",
-            lcolor=335,
-            lwidth=1,
+            # lcolor=ROOT.kBlack,
+            # lwidth=1,
             msize=0,
             fcolor=ROOT.kBlack,
-            fstyle=3004,
+            # fstyle=3004,
+            alpha=0.25,
         )
         legend.AddEntry(err_hist, "Stat. Unc.", "f")
 
@@ -280,6 +297,8 @@ def stack_histograms(input_files, hist_name, syst_list, output_dir, sonly, sig_n
             bin_errors_up,
         )
         asym_errors.SetFillColor(ROOT.kBlack)
+        asym_errors.SetLineColor(ROOT.kBlack)
+        asym_errors.SetLineWidth(1)
         asym_errors.SetFillStyle(3005)
         asym_errors.Draw("e2same0")
         legend.AddEntry(asym_errors, "Stat.#oplusSyst.", "f")
@@ -318,22 +337,23 @@ def stack_histograms(input_files, hist_name, syst_list, output_dir, sonly, sig_n
         asym_errors_ratio.SetFillStyle(3005)
         asym_errors_ratio.Draw("e2same0")
 
-        # prediction_ratio = bkg_hist.Clone()
-        # prediction_ratio.Divide(bkg_hist)
-        # CMS.cmsDraw(
-        #     prediction_ratio,
-        #     "e2same0",
-        #     lwidth=100,
-        #     msize=0,
-        #     fcolor=ROOT.kBlack,
-        #     fstyle=3004,
-        # )
+        prediction_ratio = bkg_hist.Clone()
+        prediction_ratio.Divide(bkg_hist)
+        CMS.cmsDraw(
+            prediction_ratio,
+            "e2same0",
+            # lwidth=100,
+            msize=0,
+            fcolor=ROOT.kBlack,
+            # fstyle=3004,
+            alpha=0.25,
+        )
         if not isBlind:
             CMS.cmsDraw(ratio, "E1X0", mcolor=ROOT.kBlack)
         ref_line = ROOT.TLine(x_low, 1, x_high, 1)
         CMS.cmsDrawLine(ref_line, lcolor=ROOT.kBlack, lstyle=ROOT.kDotted)
         ratio_from_canvas = CMS.GetcmsCanvasHist(canvas.GetPad(2))
-        ratio_from_canvas.GetYaxis().SetRangeUser(0.0, 2.0)
+        ratio_from_canvas.GetYaxis().SetRangeUser(0.5, 1.5)
 
         # Ratio plot
         # canvas.cd(2)
@@ -399,9 +419,11 @@ def read_csv(csv_file):
     """
     with open(csv_file, mode='r') as f:
         csv_reader = csv.reader(f)
-        hist_list = [line[0] for line in csv_reader if not line[0]=='Variable']
         if "systs" not in csv_file:
-            hist_list = [f"h_{hist}" for hist in hist_list]
+            hist_list = [line for line in csv_reader if not line[0]=='Variable']
+            hist_list = [[f"h_{hist[0]}", hist[2], hist[3]] for hist in hist_list]
+        else:
+            hist_list = [line[0] for line in csv_reader if not line[0]=='Variable']
     return hist_list
 
 if __name__ == "__main__":
@@ -499,10 +521,10 @@ if __name__ == "__main__":
     syst_list = read_csv(args.systs_csv)
     if not args.hist_name:
         hist_list = read_csv(args.input_csv)
-        for hist_name in hist_list:
+        for hist_info in hist_list:
             stack_histograms(
                 input_files,
-                hist_name,
+                hist_info[0],
                 syst_list,
                 args.output_dir,
                 args.sonly,
@@ -510,6 +532,8 @@ if __name__ == "__main__":
                 args.log,
                 args.blind,
                 args.verbosity,
+                float(hist_info[1]),
+                float(hist_info[2]),
             )
     else:
         stack_histograms(

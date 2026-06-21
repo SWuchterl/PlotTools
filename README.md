@@ -1,4 +1,4 @@
-# Plotting and fitting tools for the $|V_{cb}|$ measurement.
+# Plotting and fitting tools for the $|V_{cb}|$ measurement
 
 In the following, an example workflow is given.
 
