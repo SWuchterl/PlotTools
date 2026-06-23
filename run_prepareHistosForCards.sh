@@ -4,9 +4,9 @@ INPUT_DIR=/eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07042026_2024_1
 PROD_VERSION=07042026
 EXTRA_NAME=
 SYST_DIR=/eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07042026_syst_2024_1L_Wcb/
-OUTPUT_DIR=datacard_preparation_07042026_ge2bge1c_dataobs5FS/
+OUTPUT_DIR=datacard_preparation_07042026_ge2bge1c_dataobs4FS/
 YEAR=2024
 
 
 #python3 prepareHistosForCards.py --input_dirs $INPUT_DIR/data/ --output_dir $OUTPUT_DIR --tree_name Events --year $YEAR --nproc 1 
-python3 prepareHistosForCards.py --input_dirs $INPUT_DIR/mc/ --output_dir $OUTPUT_DIR --tree_name Events --year $YEAR --nproc 1 --extra_syst_dir $SYST_DIR --mc_data_obs_5fs
+python3 prepareHistosForCards.py --input_dirs $INPUT_DIR/mc/ --output_dir $OUTPUT_DIR --tree_name Events --year $YEAR --nproc 1 --extra_syst_dir $SYST_DIR --mc_data_obs_4fs_mc_5fs

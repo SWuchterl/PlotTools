@@ -56,6 +56,12 @@ OTHERS_COMPONENTS = {
 
 IGNORE_PROCESSES = {"TotalBkg", "TotalSig"}
 
+DPS_MERGE_MAP = {
+    "ttbb-dps": "ttbb",
+    "tt2b-dps": "tt2b",
+    "ttbj-dps": "ttbj",
+}
+
 
 def _load_histograms(root_path, hist_names):
     root_file = ROOT.TFile.Open(root_path)
@@ -88,6 +94,43 @@ def _zero_like(hist, name):
     return out
 
 
+def _graph_to_hist(graph, name, ref_hist):
+    """Convert a TGraphAsymmErrors to a TH1D by extracting points and creating a new histogram."""
+    if not isinstance(graph, ROOT.TGraphAsymmErrors):
+        return None
+    
+    n_points = graph.GetN()
+    if n_points == 0:
+        return None
+    
+    import array as arr
+    
+    # Create a new histogram matching the reference structure
+    hist = ref_hist.Clone(name)
+    hist.SetDirectory(0)  # Detach from file
+    hist.Reset("ICES")
+    hist.Sumw2()
+    
+    # Fill histogram from graph points
+    for i in range(n_points):
+        x = arr.array('d', [0])
+        y = arr.array('d', [0])
+        graph.GetPoint(i, x, y)
+        
+        # Find bin and fill
+        bin_idx = hist.FindBin(x[0])
+        
+        # Get asymmetric errors - use average
+        eyl = graph.GetErrorYlow(i)
+        eyh = graph.GetErrorYhigh(i)
+        err = (eyl + eyh) / 2.0
+        
+        hist.SetBinContent(bin_idx, y[0])
+        hist.SetBinError(bin_idx, err)
+    
+    return hist
+
+
 def _get_all_hists_in_dir(directory):
     out = {}
     for key in directory.GetListOfKeys():
@@ -99,10 +142,15 @@ def _get_all_hists_in_dir(directory):
 
 
 def _load_prefit_postfit(root_path, postfit=False):
-    stage = "postfit" if postfit else "prefit"
     root_file = ROOT.TFile.Open(root_path)
     if not root_file or root_file.IsZombie():
         raise FileNotFoundError(f"Could not open file: {root_path}")
+
+    # Support both legacy layout (<category>_prefit/postfit) and fitDiagnostics
+    # layout (shapes_prefit/shapes_fit_s with per-category subdirectories).
+    fits_dir_prefit = root_file.Get("shapes_prefit")
+    fits_dir_postfit = root_file.Get("shapes_fit_s")
+    is_fitdiagnostics = isinstance(fits_dir_prefit, ROOT.TDirectory)
 
     process_blocks = {}
     data_blocks = {}
@@ -111,28 +159,73 @@ def _load_prefit_postfit(root_path, postfit=False):
 
     for block_name in HIST_ORDER:
         category = CATEGORY_ORDER[block_name]
-        dir_name = f"{category}_{stage}"
-        directory = root_file.Get(dir_name)
+        if is_fitdiagnostics:
+            topdir = fits_dir_postfit if postfit else fits_dir_prefit
+            if not topdir or not isinstance(topdir, ROOT.TDirectory):
+                root_file.Close()
+                missing = "shapes_fit_s" if postfit else "shapes_prefit"
+                raise ValueError(f"Directory '{missing}' not found in '{root_path}'.")
+            directory = topdir.Get(category)
+            dir_name = f"{topdir.GetName()}/{category}"
+        else:
+            stage = "postfit" if postfit else "prefit"
+            dir_name = f"{category}_{stage}"
+            directory = root_file.Get(dir_name)
+
         if not directory or not isinstance(directory, ROOT.TDirectory):
             root_file.Close()
             raise ValueError(f"Directory '{dir_name}' not found in '{root_path}'.")
 
         hists_in_dir = _get_all_hists_in_dir(directory)
-        if "TotalProcs" not in hists_in_dir:
+
+        total_name = "total" if "total" in hists_in_dir else "TotalProcs"
+        
+        # Look for data: first as histogram, then as TGraphAsymmErrors
+        data_name = None
+        if "data" in hists_in_dir:
+            data_name = "data"
+        elif "data_obs" in hists_in_dir:
+            data_name = "data_obs"
+        else:
+            # Try to find as TGraphAsymmErrors in directory
+            data_graph = directory.Get("data")
+            if isinstance(data_graph, ROOT.TGraphAsymmErrors):
+                data_name = "data"
+            else:
+                data_graph = directory.Get("data_obs")
+                if isinstance(data_graph, ROOT.TGraphAsymmErrors):
+                    data_name = "data_obs"
+        
+        if total_name not in hists_in_dir:
             root_file.Close()
-            raise ValueError(f"Histogram 'TotalProcs' not found in '{dir_name}' of '{root_path}'.")
+            raise ValueError(f"Histogram '{total_name}' not found in '{dir_name}' of '{root_path}'.")
 
-        ref_hists[block_name] = _clone_and_detach(hists_in_dir["TotalProcs"], f"ref_{block_name}")
-        total_procs_blocks[block_name] = _clone_and_detach(hists_in_dir["TotalProcs"], f"totalprocs_{block_name}")
+        ref_hists[block_name] = _clone_and_detach(hists_in_dir[total_name], f"ref_{block_name}")
+        total_procs_blocks[block_name] = _clone_and_detach(hists_in_dir[total_name], f"totalprocs_{block_name}")
 
-        if "data_obs" in hists_in_dir:
-            data_blocks[block_name] = _clone_and_detach(hists_in_dir["data_obs"], f"data_{block_name}")
+        if data_name is not None:
+            if data_name in hists_in_dir:
+                data_blocks[block_name] = _clone_and_detach(hists_in_dir[data_name], f"data_{block_name}")
+                print(f"  Found data histogram '{data_name}' for block '{block_name}'")
+            else:
+                # Must be TGraphAsymmErrors
+                graph = directory.Get(data_name)
+                if isinstance(graph, ROOT.TGraphAsymmErrors):
+                    data_hist_from_graph = _graph_to_hist(graph, f"data_{block_name}", ref_hists[block_name])
+                    if data_hist_from_graph:
+                        data_blocks[block_name] = data_hist_from_graph
+                        print(f"  Converted TGraphAsymmErrors '{data_name}' to histogram for block '{block_name}'")
+                    else:
+                        print(f"  WARNING: TGraphAsymmErrors '{data_name}' is empty in block '{block_name}'")
+        else:
+            print(f"  WARNING: No data histogram or graph found in block '{block_name}'")
 
         for proc_name, hist in hists_in_dir.items():
-            if proc_name in IGNORE_PROCESSES or proc_name in ["TotalProcs", "data_obs"]:
+            if proc_name in IGNORE_PROCESSES or proc_name in ["TotalProcs", "data_obs", "total", "data", "total_signal", "total_background", "total_covar"]:
                 continue
 
-            target_proc = "others" if proc_name in OTHERS_COMPONENTS else proc_name
+            merged_proc = DPS_MERGE_MAP.get(proc_name, proc_name)
+            target_proc = "others" if merged_proc in OTHERS_COMPONENTS else merged_proc
             if target_proc not in process_blocks:
                 process_blocks[target_proc] = {}
             if block_name not in process_blocks[target_proc]:
@@ -174,12 +267,14 @@ def _build_kept_bins_map(total_procs_blocks, data_blocks, eps=1e-12):
     kept_bins = {}
     for name in HIST_ORDER:
         total_hist = total_procs_blocks[name]
-        data_hist = data_blocks[name]
+        data_hist = data_blocks.get(name)  # Use .get() to handle None
         nbins = total_hist.GetNbinsX()
         kept_bins[name] = []
         for i in range(1, nbins + 1):
             total_empty = abs(total_hist.GetBinContent(i)) < eps
-            data_empty = abs(data_hist.GetBinContent(i)) < eps
+            data_empty = True  # Default to empty if data_hist is None
+            if data_hist is not None:
+                data_empty = abs(data_hist.GetBinContent(i)) < eps
             if not (total_empty and data_empty):
                 kept_bins[name].append(i)
     return kept_bins
@@ -262,11 +357,17 @@ def plot_unrolled(input_root, output_dir, sig_norm=1.0, log=False, blind=False, 
     data_hist = _make_unrolled_hist(data_blocks, total_bins, "data_unrolled", kept_bins_map)
     total_mc_hist = _make_unrolled_hist(total_procs_blocks, total_bins, "totalprocs_unrolled", kept_bins_map)
 
+    print(f"\nData histogram created:")
+    print(f"  Total bins in unrolled histogram: {total_bins}")
+    print(f"  Data histogram integral (before blind): {data_hist.Integral()}")
+
     if blind:
         blind_bins = len(kept_bins_map[HIST_ORDER[0]])
         for i in range(1, blind_bins + 1):
             data_hist.SetBinContent(i, 0.0)
             data_hist.SetBinError(i, 0.0)
+        print(f"  Data histogram integral (after blind): {data_hist.Integral()}")
+        print(f"  Blinded bins 1-{blind_bins} (first block)")
 
     for process_name, block_hists in process_blocks.items():
         unrolled = _make_unrolled_hist(block_hists, total_bins, f"{process_name}_unrolled", kept_bins_map)
@@ -312,12 +413,11 @@ def plot_unrolled(input_root, output_dir, sig_norm=1.0, log=False, blind=False, 
     if log:
         ROOT.gPad.SetLogy()
         max_val = max(stack_max, data_max) if max(stack_max, data_max) > 0 else 1.0
-        hist_from_canvas.GetYaxis().SetRangeUser(50, max_val * 1000)
+        hist_from_canvas.GetYaxis().SetRangeUser(1, max_val * 1000)
         #hist_from_canvas.GetYaxis().SetRangeUser(0.1, max_val * 100000)
 
     if show_blocks and block_edges is not None:
         y_top = hist_from_canvas.GetYaxis().GetXmax()
-        y_text = y_top * 0.75
         for edge in block_edges[1:-1]:
             line = ROOT.TLine(edge, 0, edge, y_top)
             line.SetLineStyle(ROOT.kDashed)
@@ -325,36 +425,23 @@ def plot_unrolled(input_root, output_dir, sig_norm=1.0, log=False, blind=False, 
             line.Draw("same")
             block_guides.append(line)
 
+        pad1 = canvas.GetPad(1)
+        x_span = (x_high - x_low) if (x_high - x_low) > 0 else 1.0
+        x_left_ndc = pad1.GetLeftMargin()
+        x_right_ndc = 1.0 - pad1.GetRightMargin()
+        y_text_ndc = pad1.GetBottomMargin() + 0.035
+
         latex = ROOT.TLatex()
         latex.SetTextAlign(22)
         latex.SetTextSize(0.03)
         for center, name in zip(block_centers, active_blocks):
             label = HIST_LABELS.get(name, name.replace("h_", ""))
-            latex.DrawLatex(center, y_text, label)
+            frac_center = (center - x_low) / x_span
+            x_center_ndc = x_left_ndc + frac_center * (x_right_ndc - x_left_ndc)
+            latex.DrawLatexNDC(x_center_ndc, y_text_ndc, label)
         block_guides.append(latex)
 
-        # Draw per-block 0/1 edge labels in the lower part of the upper pad
-        pad1 = canvas.GetPad(1)
-        pad1.cd()
-        x_span = (x_high - x_low) if (x_high - x_low) > 0 else 1.0
-        x_left_ndc = pad1.GetLeftMargin()
-        x_right_ndc = 1.0 - pad1.GetRightMargin()
-        # Put labels in the lower margin of the upper pad (below the x-axis frame).
-        y_ndc = -0.01 * pad1.GetBottomMargin()
 
-        tick_latex_top = ROOT.TLatex()
-        tick_latex_top.SetTextAlign(21)
-        tick_latex_top.SetTextSize(0.031)
-
-        for start, end in block_ranges:
-            frac_start = (start - x_low) / x_span
-            frac_end = (end - x_low) / x_span
-            x0_ndc = x_left_ndc + frac_start * (x_right_ndc - x_left_ndc)
-            x1_ndc = x_left_ndc + frac_end * (x_right_ndc - x_left_ndc)
-            tick_latex_top.DrawLatexNDC(x0_ndc, y_ndc, "0")
-            tick_latex_top.DrawLatexNDC(x1_ndc, y_ndc, "1")
-
-        block_guides.append(tick_latex_top)
 
     if data_hist is not None:
         bkg_hist = stack.GetStack().Last()

@@ -16,7 +16,7 @@ suffix_dict = {'base' : '', 'ttLF' : '_0', 'ttcj' : '_41', 'tt2c' : '_42', 'ttcc
 mc_processes_for_data_obs = ['tt-vcb', 'ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj', 'tt2c', 'ttLF', 'singletop', 'wjets', 'ttZ', 'ttW', 'diboson', 'ttHbb', 'ttHcc']
 tt_5fs_replacement_processes = ['ttbb', 'ttbj', 'tt2b']
 
-def process_tree(infile, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning, perProcessSysts, mc_data_obs_5fs=False):
+def process_tree(infile, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning, perProcessSysts, mc_data_obs_5fs=False, mc_data_obs_4fs_mc_5fs=False):
     """
     Processes a TTree, converts it to multiple TH1Ds for specified branches, and saves them to ROOT files.
 
@@ -82,12 +82,14 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
             continue
         if any(x in infile for x in tt_file_names) and "base" in selection_name:
             continue
-        if any(x in selection_name for x in tt4f_strings) and not "4f" in infile and not (mc_data_obs_5fs and "powheg" in infile):
+        if any(x in selection_name for x in tt4f_strings) and not "4f" in infile and not ((mc_data_obs_5fs or mc_data_obs_4fs_mc_5fs) and "powheg" in infile):
             continue
         if any(x in selection_name for x in tt_strings) and not "powheg" in infile:
             continue
 
         is_5fs_proxy_selection = mc_data_obs_5fs and "powheg" in infile and any(x in selection_name for x in tt4f_strings)
+        is_4fs_proxy_selection = mc_data_obs_4fs_mc_5fs and "4f" in infile and "-dps" not in infile and any(x in selection_name for x in tt4f_strings)
+        is_5fs_nominal_selection = mc_data_obs_4fs_mc_5fs and "powheg" in infile and any(x in selection_name for x in tt4f_strings)
 
         suffix = suffix_dict.get(selection_name, '')
 
@@ -110,9 +112,12 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
             # For the optional MC-based data_obs, produce only nominal 5FS proxy templates.
             if is_5fs_proxy_selection and syst != "None":
                 continue
+            # For the opposite mode, produce only nominal 4FS proxy templates for data_obs.
+            if is_4fs_proxy_selection and syst != "None":
+                continue
 
             # Keep only the explicitly process-dependent nuisances for tt-like samples.
-            # Use startswith to avoid catching unrelated names like CMS_flavTag_LHE_muF_*.
+            # startswith serves to avoid catching unrelated names like CMS_flavTag_LHE_muF_*.
             perProcessSystsWithoutLHEmuRmuF = [procDepSyst for procDepSyst in perProcessSysts if not (procDepSyst.startswith("LHE_muR") or procDepSyst.startswith("LHE_muF") or procDepSyst.startswith("minorBkg_PS_"))]
             if any(syst.startswith(procDepSyst) for procDepSyst in perProcessSystsWithoutLHEmuRmuF) and "tt" not in infile:
                 continue # Skip certain systematics if the process is not a ttbar one (including signal, ttH, and ttV)
@@ -139,18 +144,19 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
                     hist_name = selection_name
                     if is_5fs_proxy_selection:
                         hist_name = f"{hist_name}_5FS"
+                    elif is_4fs_proxy_selection:
+                        hist_name = f"{hist_name}_4FS"
+                    elif is_5fs_nominal_selection:
+                        hist_name = selection_name
                 elif any(x in infile for x in tt_file_names) and "-dps" in infile:
                     hist_name = selection_name + "-dps"
                 
                 if not syst == "None":
                     #Keep the process name in the systematic name for process-dependent systematics
                     if any(procDepSyst in syst for procDepSyst in perProcessSysts):
-                        #print(f"Identified process-dependent systematic: {syst} for process: {hist_name}")
                         process_flag = hist_name.split('_')[0] # Assuming the process name is the first part of the histogram name
                         new_syst_name = syst.replace(f"_{year}", f"_{process_flag}_{year}") if "bFrag" not in syst else syst
                         hist_name = f"{hist_name}_{new_syst_name}"
-                        #print(f"Final hist_name: {hist_name}")
-                        #print()
                     else:
                          hist_name = f"{hist_name}_{syst}"
 
@@ -181,7 +187,7 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
         output_file_handles[outfile].cd()
         hist.Write()
     
-    # Chiudi tutti i file
+    # Close all files
     for f in output_file_handles.values():
         f.Close()
     
@@ -190,7 +196,7 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
 
 
 
-def process_trees_parallel(input_files, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nproc=1, mc_data_obs_5fs=False):
+def process_trees_parallel(input_files, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nproc=1, mc_data_obs_5fs=False, mc_data_obs_4fs_mc_5fs=False):
 
     process_func = partial(
         process_tree, 
@@ -201,7 +207,8 @@ def process_trees_parallel(input_files, output_files, tree_name, year, selection
         adhoc_selection=adhoc_selection,
         adhoc_binning=adhoc_binning,
         perProcessSysts=perProcessSysts,
-        mc_data_obs_5fs=mc_data_obs_5fs
+        mc_data_obs_5fs=mc_data_obs_5fs,
+        mc_data_obs_4fs_mc_5fs=mc_data_obs_4fs_mc_5fs
     )
 
     # ROOT files are not safe for concurrent UPDATE writes from multiple processes.
@@ -440,7 +447,6 @@ def assign_event_weight(year, infile, suffix, syst=""):
     """
     weight = "1"
     if year == 2024 or year == 2025:
-        #weight = "2.013*0.93*(!jetVetoMapEventVeto)*lumiwgt*genWeight*xsecWeight*l1PreFiringWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl && ((year!=2018) || (year==2018 && !(lep1_phi>-1.57 && lep1_phi<-0.87 && lep1_eta<-1.3)))) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
         weight = "lumiwgt*genWeight*xsecWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
     if "ttbar" in infile or "tt-vcb" in infile:
         weight = f"{weight}*TopPtWeight[1]*TopPtWeightNorm{suffix}[1]*TOPMLWeight[5]*TOPMLWeightNorm{suffix}[5]" #TOPMLWeight[5] is b-fragmentation nominal
@@ -452,23 +458,23 @@ def assign_event_weight(year, infile, suffix, syst=""):
     
     return weight
 
-def sum_data(output_files, mc_data_obs_5fs=False):
+def sum_data(output_files, mc_data_obs_5fs=False, mc_data_obs_4fs_mc_5fs=False):
     for outfile in output_files:
         fIn = ROOT.TFile.Open(outfile, "UPDATE")
         if not fIn or fIn.IsZombie():
             print(f"Error opening output file: {outfile}")
             continue
 
-        if mc_data_obs_5fs:
+        if mc_data_obs_5fs or mc_data_obs_4fs_mc_5fs:
             data_obs = None
             for process in mc_processes_for_data_obs:
                 source_hist_name = process
                 if process in tt_5fs_replacement_processes:
-                    candidate_5fs = f"{process}_5FS"
-                    if isinstance(fIn.Get(candidate_5fs), ROOT.TH1):
-                        source_hist_name = candidate_5fs
+                    preferred = f"{process}_5FS" if mc_data_obs_5fs else f"{process}_4FS"
+                    if isinstance(fIn.Get(preferred), ROOT.TH1):
+                        source_hist_name = preferred
                     else:
-                        print(f"WARNING: {candidate_5fs} not found in {outfile}. Falling back to {process}.")
+                        print(f"WARNING: {preferred} not found in {outfile}. Falling back to {process}.")
 
                 proc_hist = fIn.Get(source_hist_name)
                 if not isinstance(proc_hist, ROOT.TH1):
@@ -514,6 +520,7 @@ if __name__ == "__main__":
     parser.add_argument("--nproc", type=int, help="Number of worker processes. Use 1 to avoid concurrent ROOT file writes.")
     parser.add_argument("--extra_syst_dir", type=str,help="Directory containing extra shape systematics in per-systematic subfolders.")
     parser.add_argument("--mc_data_obs_5fs", nargs="?", const=1, type=bool, default=False, required=False, help="Build data_obs from summed MC and use 5FS templates for ttbb/ttbj/tt2b when available.")
+    parser.add_argument("--mc_data_obs_4fs_mc_5fs", nargs="?", const=1, type=bool, default=False, required=False, help="Build data_obs from summed MC using 4FS ttbb/ttbj/tt2b, while nominal MC templates for ttbb/ttbj/tt2b use 5FS.")
 
     args = parser.parse_args()
 
@@ -795,7 +802,10 @@ if __name__ == "__main__":
 
     nprocs = args.nproc if args.nproc else len(input_files)
 
-    process_trees_parallel(input_files, output_files, args.tree_name, args.year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nprocs, args.mc_data_obs_5fs)
+    if args.mc_data_obs_5fs and args.mc_data_obs_4fs_mc_5fs:
+        raise ValueError("--mc_data_obs_5fs and --mc_data_obs_4fs_mc_5fs are mutually exclusive.")
+
+    process_trees_parallel(input_files, output_files, args.tree_name, args.year, selections, adhoc_selection, adhoc_binning, perProcessSysts, nprocs, args.mc_data_obs_5fs, args.mc_data_obs_4fs_mc_5fs)
 
     add_extra_systematic_histograms(
         args.extra_syst_dir,
@@ -807,5 +817,5 @@ if __name__ == "__main__":
         adhoc_binning,
     )
 
-    sum_data(output_files, args.mc_data_obs_5fs)
+    sum_data(output_files, args.mc_data_obs_5fs, args.mc_data_obs_4fs_mc_5fs)
     print(f"All done!")
