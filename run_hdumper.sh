@@ -2,8 +2,8 @@
 # This script is used to run the hdumper to make histograms
 INPUT_DIR=/eos/cms/store/cmst3/group/top/rsalvatico/Vcb_analysis_07042026_2024_1L_Wcb/
 PROD_VERSION=07042026
-CONFIG_FILE=configs/hconfig_ANplots.csv
-EXTRA_NAME=preselection_ttLFm0p1_withSysts
+CONFIG_FILE=configs/hconfig_minimal.csv
+EXTRA_NAME=preselection_ge2bge1c_separateProcesses
 OUTPUT_DIR=histos_$PROD_VERSION/$EXTRA_NAME/
 YEAR=2024
 
@@ -25,8 +25,8 @@ YEAR=2024
 #
 #EXTRA_SELECTION="score_ttLF < 0.1 && score_tt_Wcb < 0.8 && n_btagM >= 2 && n_ctagM >= 1"
 
-python3 hdumper.py --input_dirs $INPUT_DIR/mc/ --output_dir $OUTPUT_DIR --tree_name Events --input_csv $CONFIG_FILE --year $YEAR --systematics --add_selection "score_ttLF < 0.1"
-python3 hdumper.py --input_dirs $INPUT_DIR/data/ --output_dir $OUTPUT_DIR --tree_name Events --input_csv $CONFIG_FILE --year $YEAR --systematics --add_selection "score_ttLF < 0.1"
+python3 hdumper.py --input_dirs $INPUT_DIR/mc/ --output_dir $OUTPUT_DIR --tree_name Events --input_csv $CONFIG_FILE --year $YEAR
+python3 hdumper.py --input_dirs $INPUT_DIR/data/ --output_dir $OUTPUT_DIR --tree_name Events --input_csv $CONFIG_FILE --year $YEAR
 
 #python3 hdumper.py --input_dirs $INPUT_DIR/mc/ --output_dir $OUTPUT_DIR --tree_name Events --input_csv $CONFIG_FILE --year $YEAR --add_selection "$EXTRA_SELECTION && $conditions"
 #python3 hdumper.py --input_dirs $INPUT_DIR/data/ --output_dir $OUTPUT_DIR --tree_name Events --input_csv $CONFIG_FILE --year $YEAR --add_selection "$EXTRA_SELECTION && $conditions"

@@ -1,2 +1,2 @@
 Variable, nbins, xmin, xmax
-score_tt_Wcb, 20, 0., 1.
+lep1_phi, 50, -3.14, 3.14

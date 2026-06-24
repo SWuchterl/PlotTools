@@ -165,9 +165,10 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
             if not do_systematics and not syst == "None":
                 continue
             if syst == "None":
-                weight = assign_event_weight(year, suffix, infile)
+                weight = assign_event_weight(year, infile, suffix)
             else:
-                weight = assign_event_weight(year, suffix, infile, systematics[syst])
+                weight = assign_event_weight(year, infile, suffix, systematics[syst])
+
             #if not "data" in infile and not "Data" in infile:
             #    weight = weight + flavTag_renormalization[selection_name] #FIXME
             #    print(f"weight is {weight}")
@@ -184,7 +185,7 @@ def process_tree(infile, outfile, tree_name, hist_configs, year, selections, eve
                 print(f"Event weight: {weight}")
                 df_weighted = df.Define(weight_column, weight)
             else:
-                df_weighted = df.Define(weight_column, "1")  # Set collision data weight to 1
+                df_weighted = df.Define(weight_column, "1.")  # Set collision data weight to 1
     
             if not "base" in selection_name:
                 print(f"Applying additional selection for {infile}: {Fore.RED}{selection_name}{Style.RESET_ALL}")
@@ -668,7 +669,7 @@ if __name__ == "__main__":
 
     # Merge some of the output files
     ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttZ.root", "h_ttW.root", "h_diboson.root", "h_singletop.root", "h_wjets.root"]
-    merge_files(args.output_dir, ttH_list, "h_others.root")
+    #merge_files(args.output_dir, ttH_list, "h_others.root")
 
     merge_files(args.output_dir, ["h_ttbb-4f_ttbb.root", "h_ttbb-4f-dps_ttbb.root"], "h_ttbb.root")
     merge_files(args.output_dir, ["h_ttbb-4f_tt2b.root", "h_ttbb-4f-dps_tt2b.root"], "h_tt2b.root")
