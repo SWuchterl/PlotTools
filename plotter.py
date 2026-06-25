@@ -9,6 +9,26 @@ import cmsstyle as CMS
 ROOT.TH1.SetDefaultSumw2(True)
 ROOT.gROOT.SetBatch(True)
 
+# https://cmsstyle.readthedocs.io/en/latest/reference/#cmsstyle.cmsstyle.p10
+colours = {
+    "ttWcb": "#ffa90e",
+    "ttLF": "#e76300",
+    "ttcj": "#b9ac70",
+    "tt2c": "#94a4a2",
+    "ttcc": "#717581",
+    "ttbj": "#92dadd",
+    "tt2b": "#3f90da",
+    "ttbb": "#832db6",
+    "others": "#a96b59",
+    "QCD": "#bd1f01",
+}
+
+def build_colour_list(phys_process):
+    colour_list = []
+    for key in phys_process.keys():
+        colour_list.append(colours[key])
+    return colour_list
+
 def stack_histograms(
         input_files,
         hist_name,
@@ -188,6 +208,7 @@ def stack_histograms(
             key=lambda item: item[1].Integral(),
         )
     }
+    # del phys_process["QCD"]
 
     # Save the stack in a canvas and add a legend
     print(f"Saving stacked histograms as: {output_dir}{hist_name.replace('h_', '')}.pdf / .png")
@@ -235,7 +256,7 @@ def stack_histograms(
         legend.AddEntry(data_hist, "Data", "pe")
     legend.AddEntry(sig_hist, f"W#rightarrowcb#times{sig_norm}", "l")
 
-    CMS.cmsDrawStack(stack, legend, phys_process)
+    CMS.cmsDrawStack(stack, legend, phys_process, palette=build_colour_list(phys_process))
     if not sonly:
         CMS.cmsDraw(sig_hist, "same", lstyle=2, msize=0, lcolor=ROOT.kRed, lwidth=4)
     else:
