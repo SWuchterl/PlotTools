@@ -16,6 +16,8 @@ suffix_dict = {'base' : '', 'ttLF' : '_0', 'ttcj' : '_41', 'tt2c' : '_42', 'ttcc
 mc_processes_for_data_obs = ['tt-vcb', 'ttbb', 'ttbj', 'tt2b', 'ttcc', 'ttcj', 'tt2c', 'ttLF', 'singletop', 'wjets', 'ttZ', 'ttW', 'diboson', 'ttHbb', 'ttHcc']
 tt_5fs_replacement_processes = ['ttbb', 'ttbj', 'tt2b']
 
+JME_scaling_factors = {"ttWcb": 6.26, "ttLF": 4.88, "ttbb": 4.61, "tt2b": 5.02, "ttbj": 5.51, "ttcc": 4.43, "tt2c": 5.13, "ttcj": 5.50}
+
 def process_tree(infile, output_files, tree_name, year, selections, adhoc_selection, adhoc_binning, perProcessSysts, mc_data_obs_5fs=False, mc_data_obs_4fs_mc_5fs=False):
     """
     Processes a TTree, converts it to multiple TH1Ds for specified branches, and saves them to ROOT files.
@@ -134,7 +136,7 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
             if "data" not in infile and "Data" not in infile:
                 df_selected = df_selected.Define(weight_column, weight)
             else: 
-                df_selected = df_selected.Define(weight_column, "1") # Apply jet veto map for data as well
+                df_selected = df_selected.Define(weight_column, "(!jetVetoMapEventVeto)") # Apply jet veto map for data as well
 
             final_df = dict()
             for (score, adhoc_sel), outfile in zip(adhoc_selection.items(), output_files):
@@ -158,15 +160,36 @@ def process_tree(infile, output_files, tree_name, year, selections, adhoc_select
                         new_syst_name = syst.replace(f"_{year}", f"_{process_flag}_{year}") if "bFrag" not in syst else syst
                         hist_name = f"{hist_name}_{new_syst_name}"
                     else:
-                         hist_name = f"{hist_name}_{syst}"
+                        hist_name = f"{hist_name}_{syst}"
 
                 final_df[score] = df_selected.Filter(adhoc_sel)
+
+                #JME stuff
+                JME_weight_column = f"JME_weight_{weight_column}"
+                if "data" in infile or "Data" in infile:
+                    JME_weight_column = weight_column
+                elif "data" not in infile and "Data" not in infile and "Wcb" in outfile:    
+                    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*6.26")
+                elif "data" not in infile and "Data" not in infile and "LF" in outfile:
+                    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*4.88")
+                elif "data" not in infile and "Data" not in infile and "BB" in outfile:
+                    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*4.61")
+                elif "data" not in infile and "Data" not in infile and "2B" in outfile:
+                    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*5.02")
+                elif "data" not in infile and "Data" not in infile and "BJ" in outfile:
+                    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*5.51")
+                elif "data" not in infile and "Data" not in infile and "CC" in outfile:
+                    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*4.43")
+                elif "data" not in infile and "Data" not in infile and "2C" in outfile:
+                    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*5.13")
+                elif "data" not in infile and "Data" not in infile and "CJ" in outfile:
+                    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*5.50")
 
                 hist_key = (selection_name, outfile, hist_name, score)
                 histograms[hist_key] = final_df[score].Histo1D(
                     (hist_name, f"Histogram of {score} for process {hist_name}", 
                      len(adhoc_binning[score])-1, adhoc_binning[score]), 
-                    score, weight_column
+                    score, JME_weight_column
                 )
 
             if "Data" in infile or "data" in infile: break # Do not continue with the systematic variations for collision data
@@ -304,7 +327,7 @@ def process_tree_extra_syst(infile, output_files, tree_name, year, selections, a
         if "data" not in infile and "Data" not in infile:
             df_selected = df_selected.Define(weight_column, weight)
         else:
-            df_selected = df_selected.Define(weight_column, "1")
+            df_selected = df_selected.Define(weight_column, "jetVetoMapEventVeto")
 
         final_df = {}
         for (score, adhoc_sel), outfile in zip(adhoc_selection.items(), output_files):
@@ -316,6 +339,27 @@ def process_tree_extra_syst(infile, output_files, tree_name, year, selections, a
 
             hist_name = f"{hist_name}_{extra_syst_name}"
             final_df[score] = df_selected.Filter(adhoc_sel)
+
+            #JME stuff
+            #JME_weight_column = f"JME_weight_{weight_column}"
+            #if "data" in infile or "Data" in infile:
+            #    JME_weight_column = weight_column
+            #elif "data" not in infile and "Data" not in infile and "Wcb" in outfile:    
+            #    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*6.26")
+            #elif "data" not in infile and "Data" not in infile and "LF" in outfile:
+            #    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*4.88")
+            #elif "data" not in infile and "Data" not in infile and "BB" in outfile:
+            #    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*4.61")
+            #elif "data" not in infile and "Data" not in infile and "2B" in outfile:
+            #    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*5.02")
+            #elif "data" not in infile and "Data" not in infile and "BJ" in outfile:
+            #    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*5.51")
+            #elif "data" not in infile and "Data" not in infile and "CC" in outfile:
+            #    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*4.43")
+            #elif "data" not in infile and "Data" not in infile and "2C" in outfile:
+            #    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*5.13")
+            #elif "data" not in infile and "Data" not in infile and "CJ" in outfile:
+            #    final_df[score] = final_df[score].Define(JME_weight_column, f"{weight}*5.50")
 
             hist_key = (selection_name, outfile, hist_name, score)
             histograms[hist_key] = final_df[score].Histo1D(
@@ -447,7 +491,7 @@ def assign_event_weight(year, infile, suffix, syst=""):
     """
     weight = "1"
     if year == 2024 or year == 2025:
-        weight = "lumiwgt*genWeight*xsecWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)"
+        weight = "lumiwgt*genWeight*xsecWeight*puWeight*muEffWeight*elEffWeight*flavTagWeight*(((abs(lep1_pdgId)==11 && passTrigEl) || (abs(lep1_pdgId)==13 && passTrigMu)) && passmetfilters)*(!jetVetoMapEventVeto)"
     if "ttbar" in infile or "tt-vcb" in infile:
         weight = f"{weight}*TopPtWeight[1]*TopPtWeightNorm{suffix}[1]*TOPMLWeight[5]*TOPMLWeightNorm{suffix}[5]" #TOPMLWeight[5] is b-fragmentation nominal
     if "4f" in infile:

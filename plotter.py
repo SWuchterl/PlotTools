@@ -23,6 +23,11 @@ colours = {
     "QCD": "#bd1f01",
 }
 
+tt_components = ['Wcb', 'ttbb', 'ttbj', 'tt2b', 'ttbb-dps', 'ttbj-dps', 'tt2b-dps', 'ttcc', 'ttcj', 'tt2c', 'ttLF', 'ttZ', 'ttW', 'ttHbb', 'ttHcc'] #Use Wcb because that's the process name in the script, converted from the input file name
+tt_components_nobb = ['Wcb', 'ttcc', 'ttcj', 'tt2c', 'ttLF'] #Use Wcb because that's the process name in the script, converted from the input file name
+minorBkg_components = ['singletop', 'wjets', 'diboson', 'QCD', 'others']
+signal = ['Wcb'] #Use Wcb because that's the process name in the script, converted from the input file name
+
 def build_colour_list(phys_process):
     colour_list = []
     for key in phys_process.keys():
@@ -155,6 +160,21 @@ def stack_histograms(
         for syst in syst_list:
             # Retrieve the systematic variation histograms
             found = True
+
+            if syst.startswith("minorBkg") and not any(name in phys_process_name for name in minorBkg_components):
+                continue
+            if syst.startswith("PS_fsr") and not any(name in phys_process_name for name in tt_components):
+                continue
+            if syst.startswith("PS_isr") and not any(name in phys_process_name for name in tt_components):
+                continue
+            if syst.startswith("bFrag") and not any(name in phys_process_name for name in tt_components):
+                continue
+            if syst.startswith("tune") and not any(name in phys_process_name for name in signal):
+                continue
+            if syst.startswith("CR") and not any(name in phys_process_name for name in signal):
+                continue
+
+
             hist_syst_down = root_file.Get(f"{hist_name}_{syst}Down")
             if not hist_syst_down or not isinstance(hist_syst_down, ROOT.TH1):
                 if verbosity > 1:
@@ -374,7 +394,7 @@ def stack_histograms(
         ref_line = ROOT.TLine(x_low, 1, x_high, 1)
         CMS.cmsDrawLine(ref_line, lcolor=ROOT.kBlack, lstyle=ROOT.kDotted)
         ratio_from_canvas = CMS.GetcmsCanvasHist(canvas.GetPad(2))
-        ratio_from_canvas.GetYaxis().SetRangeUser(0.5, 1.5)
+        ratio_from_canvas.GetYaxis().SetRangeUser(0.4, 1.6)
 
         # Ratio plot
         # canvas.cd(2)

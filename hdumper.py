@@ -669,7 +669,7 @@ if __name__ == "__main__":
 
     # Merge some of the output files
     ttH_list = ["h_ttHbb.root", "h_ttHcc.root", "h_ttZ.root", "h_ttW.root", "h_diboson.root", "h_singletop.root", "h_wjets.root"]
-    #merge_files(args.output_dir, ttH_list, "h_others.root")
+    merge_files(args.output_dir, ttH_list, "h_others.root")
 
     merge_files(args.output_dir, ["h_ttbb-4f_ttbb.root", "h_ttbb-4f-dps_ttbb.root"], "h_ttbb.root")
     merge_files(args.output_dir, ["h_ttbb-4f_tt2b.root", "h_ttbb-4f-dps_tt2b.root"], "h_tt2b.root")
