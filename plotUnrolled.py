@@ -160,8 +160,8 @@ def plot_unrolled(input_files, output_dir, sig_norm=1.0, log=False, blind=False,
             continue
 
         if is_signal:
-            unrolled.Scale(sig_norm)
             sig_line = unrolled.Clone("sig_line")
+            sig_line.Scale(sig_norm)
             sig_line.SetDirectory(0)
             sig_line.SetLineStyle(ROOT.kDashed)
             sig_line.SetLineWidth(2)

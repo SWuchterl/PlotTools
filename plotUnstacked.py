@@ -53,6 +53,9 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
     # Loop through input files and plot histograms
     for infile in input_files:
 
+        if "h_QCD" in infile:
+            continue #Skip QCD multijet for now
+
         # Exctract process name from file name
         proc_name_raw = os.path.basename(infile).replace('.root', '').replace('h_', '')
         
@@ -123,7 +126,7 @@ def plot_unstacked(input_files, hist_name, output_dir, process, normalization=1,
         ax.hist(bin_edges[:-1], bins=bin_edges, weights=y, histtype='step', 
                 label=proc_name_display, linewidth=2, color=color)
 
-    # Plotta la somma dei background
+    # Plot the sum of backgrounds
     if sum_of_backgrounds is not None and sum_of_backgrounds.Integral() > 0:
         sum_of_backgrounds.Scale(normalization / sum_of_backgrounds.Integral())
         bin_edges = [sum_of_backgrounds.GetBinLowEdge(i) for i in range(1, sum_of_backgrounds.GetNbinsX() + 2)]
@@ -355,6 +358,9 @@ def plot_purity(input_files, output_dir):
         if "Data" in infile:
             continue
 
+        if "h_QCD" in infile:
+            continue #Skip QCD multijet for now
+
         # Open the file
         root_file = ROOT.TFile.Open(infile)
         if not root_file or root_file.IsZombie():
@@ -454,6 +460,9 @@ def plot_purity_multiregion(input_files, output_dir, raw_evt_number=False):
 
         if "Data" in infile:
             continue
+
+        if "h_QCD" in infile:
+            continue #Skip QCD multijet for now
 
         # Open the file
         root_file = ROOT.TFile.Open(infile)
@@ -585,6 +594,9 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
         if "Data" in infile:
             continue
 
+        if "h_QCD" in infile:
+            continue #Skip QCD multijet for now
+
         # Open the file
         root_file = ROOT.TFile.Open(infile)
         if not root_file or root_file.IsZombie():
@@ -643,16 +655,16 @@ def compare_FSs(input_files, output_dir, process, raw_evt_number=False):
     width = 0.35  # the width of the bars
 
     fig, (ax, ax_ratio) = plt.subplots(2, 1, figsize=(10, 12), 
-                                       gridspec_kw={'height_ratios': [3, 1],  # proporzione 3:1 tra i plot
-                                                   'hspace': 0.05})  # spazio minimo tra i plot
+                                       gridspec_kw={'height_ratios': [3, 1], 
+                                                   'hspace': 0.05})  
     
     hep.cms.label("Work in progress", loc=2, ax=ax, lumi="110", com="13.6")
     
-    # Plot principale sui dati
+    # Main plot
     bars4F = ax.bar(x - width/2, values_4F, width, label=process + ' 4FS', color='blue', alpha=0.7)
     bars5F = ax.bar(x + width/2, values_5F, width, label=process + ' 5FS', color='red', alpha=0.7)
     
-    # Configurazione plot principale
+    # Main plot config
     ax.legend(loc='upper right')
     ax.text(0.72, 0.64,'AR\n' + '$N_{\mathrm{jet}} > 3$' + '\n' + '$N_{\mathrm{bjet}} > 0$' + '\n' + '$N_{\mathrm{b/cjet}} > 2$', 
             transform=ax.transAxes, fontsize=20)
@@ -712,6 +724,9 @@ def compare_4F5F_vs_score(input_files, output_dir, process):
     
     for infile in input_files:
         print(f"Processing file: {infile}")
+
+        if "QCD_tree" in infile:
+            continue #Skip QCD multijet for now
 
         if process == "ttbx":
             if not "bb" in infile and not "bj" in infile and not "2b" in infile:
