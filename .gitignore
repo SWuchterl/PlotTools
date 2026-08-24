@@ -1,0 +1,27 @@
+Datacards_*
+FitStudies_*
+BestOrder_raw/
+*.log
+*.root
+*.hdf5
+*.cc
+*.out
+*Templates*
+*.pdf
+*.png
+
+# python
+__pycache__/
+*.pyc
+
+# rabbit venv (see setup_rabbit_env.sh to rebuild)
+rabbit_env/
+
+# nested independent repo, not vendored here
+datacards/
+
+# agent/AI tooling config, not project docs
+.claude/
+.agents/
+CLAUDE.md
+AGENTS.md
