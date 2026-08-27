@@ -32,26 +32,8 @@ Cross-check against classic Combine on one datacard:
 
 ## Pre-unblinding study: CR + SR, expected/observed, impacts, prepostfit, GoF
 
-One command reproduces everything for the orig-shapes / lowess / no-flavtag-mirror
-study -- 4 fits (CR_expected, CR_observed, SR_expected, SR_observed), prepostfit
-and impacts (8 POIs x traditional/global) for all 4, plus goodness-of-fit toys
-for the two observed configs:
-```
-cd GoFStudy_orig_noFTS_lowess && ./run_all.sh
-```
-Idempotent (every step checks its own output and skips if present) and safe to
-rerun after a crash or Ctrl-C. `JOBS=16 TOYS=5000 ./run_all.sh` overrides toy
-parallelism/count; the two observed configs' toy batches are the only real
-compute (~2-2.5h each at 16-way parallelism). Output: `plots/prepostfit/`,
-`plots/impacts/`, `plots/toyGoF_{CR,SR}_observed.png`.
-
-SR_observed genuinely unblinds tt-vcb in the fit (real answer, real postfit,
-real GoF) but the script never prints its value, its own impact-plot rows are
-redacted (`--redact tt-vcb`, needed for every POI, not only when tt-vcb is the
-one being plotted -- it is correlated with the tt+X norms and its pull can
-otherwise leak as text into another POI's impact plot), and its prepostfit
-plot keeps the SR data marker blinded by default (a second `_withSRdata` copy
-opts in explicitly via `--show-signal-data`).
+`GoFStudy_orig_noFTS_lowess/README.md` -- setup, local run, HTCondor run for
+large toy counts, blinding discipline, output layout.
 
 ## Defaults (lowess + flavTag mirror-up off)
 
