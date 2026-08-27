@@ -25,12 +25,13 @@ from rabbit import io_tools
 from configs import model as M
 from analysis.rabbitPlotStyle import cms_label, group_stack, region_label
 
-def collect(result, fittype, channels):
+def collect(result, fittype, channels, show_signal_data=False):
     """Concatenate every channel: per-process yields, total, its error, data.
 
-    The SR is always blinded here: an Asimov fit run with the SR unmasked
-    still writes an (expected) hist_data_obs there, but the plot must never
-    show a data marker in the blinded signal region.
+    The SR is blinded by default: an Asimov fit run with the SR unmasked
+    still writes an (expected) hist_data_obs there, but the plot must not
+    show a data marker in the blinded signal region unless the caller
+    explicitly opts in via show_signal_data=True (a genuinely unblinded fit).
     """
     stack, total, err, data, edges, bounds = {}, [], [], [], 0, []
     for ch in channels:
@@ -44,7 +45,7 @@ def collect(result, fittype, channels):
             stack.setdefault(p, []).append(h[{"processes": p}].values().flatten())
         d = c["hist_data_obs"].get() if "hist_data_obs" in c.keys() else None
         vals = d.values().flatten() if d is not None else np.full(len(n), np.nan)
-        if ch in M.SIGNAL_REGIONS:
+        if ch in M.SIGNAL_REGIONS and not show_signal_data:
             vals = np.full(len(n), np.nan)
         data.append(vals)
         edges += len(n)
@@ -164,6 +165,11 @@ def main():
     p.add_argument("--asimov", action="store_true",
                    help="fit ran on Asimov/expected data (-t -1 or -t >= 1): "
                         "CMS label reads 'Simulation', points labelled 'Asimov'")
+    p.add_argument("--show-signal-data", action="store_true",
+                   help="draw the data marker in signal-region channels too. "
+                        "Off by default: the SR is blinded here regardless of the "
+                        "fit's own blinding state, so this is an explicit opt-in for "
+                        "a fit whose SR data is meant to be shown.")
     args = p.parse_args()
 
     fitresult = io_tools.get_fitresult(args.fitresult, result=args.result)
@@ -176,7 +182,8 @@ def main():
         if f"hist_{fittype}_inclusive" not in result[channels[0]].keys():
             print(f"  no {fittype} histograms in {args.fitresult}")
             continue
-        stack, total, err, data, bounds = collect(result, fittype, channels)
+        stack, total, err, data, bounds = collect(result, fittype, channels,
+                                                   show_signal_data=args.show_signal_data)
         pre_kwargs = {}
         if fittype == "postfit" and prefit_cache is not None:
             pre_kwargs = dict(prefit_total=prefit_cache[0], prefit_err=prefit_cache[1])

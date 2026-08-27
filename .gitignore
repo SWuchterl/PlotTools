@@ -10,6 +10,13 @@ BestOrder_raw/
 *.pdf
 *.png
 
+# rabbit pipeline generated reports (tensors/plots already covered above;
+# configs/*.csv are real inputs, these suffixes never collide with them)
+*_decisions.csv
+*_symmetrisation.csv
+*_report.json
+*_summary.npz
+
 # python
 __pycache__/
 *.pyc

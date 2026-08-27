@@ -226,15 +226,24 @@ def preprocess_legs(nominal, variations, args, report, dec):
       shape it does not have.
 
     Skipped with --no-symmetrisation, so the verbatim baseline is unchanged.
+    Default is --no-flavtag-mirror's old behaviour (stored flavTag legs kept
+    as-is); pass --flavtag-mirror to rebuild the down leg instead
+    (down = nom^2/up), the old default, kept for comparison/debugging.
     """
     if args.no_symmetrisation:
         report["leg_preprocess"] = "skipped (--no-symmetrisation)"
         print("  leg preprocess skipped (--no-symmetrisation)")
         return
-    n_mirror = n_two = 0
+    n_mirror = n_two = n_kept = 0
     for (cat, proc, syst), legs in variations.items():
         nom, nomvar = nominal[(cat, proc)]
         if M.is_mirror_up(syst):
+            if not args.flavtag_mirror:
+                # keep whatever the shapes file stored, the same thing the
+                # Combine noFlavTagSymm card does
+                dec[(cat, proc, syst)]["leg_preprocess"] = "flavTag stored legs (default)"
+                n_kept += 1
+                continue
             if args.flavtag_classic:
                 # deferred to smooth_flavtag_classic(), which runs on the
                 # untouched (possibly broken) stored legs
@@ -255,8 +264,10 @@ def preprocess_legs(nominal, variations, args, report, dec):
             legs[DOWN] = [nom.copy(), nomvar.copy()]
             dec[(cat, proc, syst)]["leg_preprocess"] = "two-point one-sided (down = nominal)"
             n_two += 1
-    report["leg_preprocess"] = {"mirror_up": n_mirror, "two_point_one_sided": n_two}
-    print(f"  leg preprocess: {n_mirror} flavTag mirror-up, {n_two} two-point one-sided")
+    report["leg_preprocess"] = {"mirror_up": n_mirror, "two_point_one_sided": n_two,
+                                "flavtag_stored_legs": n_kept}
+    print(f"  leg preprocess: {n_mirror} flavTag mirror-up, {n_two} two-point one-sided"
+          + (f", {n_kept} flavTag stored legs kept (default)" if n_kept else ""))
 
 
 def smooth_flavtag_classic(edges, nominal, variations, args, report, dec):
@@ -596,7 +607,8 @@ def apply_drops(edges, nominal, variations, tags, args, report, dec):
 # 5 symmetrisation policy
 # --------------------------------------------------------------------------
 
-def symmetrisation(nominal, variations, report, dec, no_symmetrisation=False):
+def symmetrisation(nominal, variations, report, dec, no_symmetrisation=False,
+                   flavtag_mirror=False):
     """Rabbit `symmetrize` policy.
 
     All leg shaping is done on the histograms in preprocess_legs (step 0.5):
@@ -615,7 +627,9 @@ def symmetrisation(nominal, variations, report, dec, no_symmetrisation=False):
         if no_symmetrisation:
             why = "disabled with --no-symmetrisation"
         elif M.is_mirror_up(syst):
-            why = "flavTag: down rebuilt by mirroring up (step 0.5)"
+            why = ("flavTag: down rebuilt by mirroring up (step 0.5)"
+                   if flavtag_mirror
+                   else "flavTag: stored legs kept (default)")
         elif M.is_two_point(syst):
             why = "two-point: one-sided, down set to nominal (step 0.5)"
         else:
@@ -804,9 +818,9 @@ def make_parser():
     p.add_argument("--zero-syst-low-neff", type=float, default=1.0,
                    help="zero systematic levers in bins with n_eff below this; 0 disables")
     p.add_argument("--no-smoothing", action="store_true")
-    p.add_argument("--smoothing-method", choices=["spline", "lowess"], default="spline",
-                   help="shape smoother: 'spline' (local cubic, chi2/ndf~1) or "
-                        "'lowess' (locally-weighted regression, as in analysis/smoothing.py)")
+    p.add_argument("--smoothing-method", choices=["spline", "lowess"], default="lowess",
+                   help="shape smoother: 'lowess' (locally-weighted regression, as in "
+                        "analysis/smoothing.py) or 'spline' (local cubic, chi2/ndf~1)")
     p.add_argument("--lowess-frac", type=float, default=0.9,
                    help="fraction of points in each local lowess fit (only used "
                         "with --smoothing-method lowess)")
@@ -819,6 +833,12 @@ def make_parser():
                         "test-only, never the default)")
     p.add_argument("--no-symmetrisation", action="store_true",
                    help="keep every variation asymmetric, ignoring configs/model.py")
+    p.add_argument("--flavtag-mirror", action="store_true",
+                   help="rebuild the flavTag down leg as down = nom^2/up instead of "
+                        "keeping the stored value (the old default; off by default now, "
+                        "matching the Combine noFlavTagSymm treatment). Only affects "
+                        "configs/model.py MIRROR_UP entries; two-point handling is "
+                        "untouched (unlike --no-symmetrisation).")
     p.add_argument("--legacy-order", action="store_true",
                    help="smooth ALL two-sided entries unconditionally, before "
                         "classify()/apply_drops() -- matches the old chain's order "
@@ -910,7 +930,7 @@ def main():
 
     print("[5] symmetrisation")
     policy, syst_rows = symmetrisation(nominal, variations, report, dec,
-                                       args.no_symmetrisation)
+                                       args.no_symmetrisation, args.flavtag_mirror)
 
     print("[6] write")
     out = write_tensor(edges, data, nominal, variations, tags, policy, args, report, dec)

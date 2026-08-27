@@ -18,7 +18,11 @@
 # folderIn=Datacards_100626_ge2bge1c_fix_clean_pseudoData5FS
 # folderIn=Datacards_100626_ge2bge1c_fix_clean_forJME
 # folderIn=Datacards_100626_ge2bge1c_fix_clean_onlySurvivingVeto
-folderIn=Datacards_190826_clean
+# folderIn=Datacards_190826_clean
+# folderIn=Datacards_250826_preUnblinding
+# folderIn=Datacards_250826_preUnblinding_nonSmoothed
+folderIn=Datacards_250826_preUnblinding_noFlavTagSymm
+
 
 
 folderOut=${folderIn}_simplified

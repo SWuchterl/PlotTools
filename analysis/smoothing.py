@@ -27,11 +27,11 @@ listSymm = [
     # "AMCATNLOFXFX_TTCJ",
     # "AMCATNLOFXFX_TT2C",
     # "AMCATNLOFXFX_TTLF",
-    "CMS_flavTag_JES_",
-    "CMS_flavTag_JER_",
-    "CMS_flavTag_xsec_",
-    "CMS_flavTag_PS_",
-    "CMS_flavTag_",
+    # "CMS_flavTag_JES_",
+    # "CMS_flavTag_JER_",
+    # "CMS_flavTag_xsec_",
+    # "CMS_flavTag_PS_",
+    # "CMS_flavTag_",
 ]
 
 listNotSymm = [

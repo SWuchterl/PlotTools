@@ -18,7 +18,8 @@
 # declare -a datacards=("Datacards_100626_ge2bge1c_fix_clean_simplified")
 # declare -a datacards=("Datacards_100626_ge2bge1c_fix_clean_pseudoData5FS_simplified")
 # declare -a datacards=("Datacards_100626_ge2bge1c_fix_clean_forJME_simplified")
-declare -a datacards=("Datacards_100626_ge2bge1c_fix_clean_onlySurvivingVeto_simplified")
+# declare -a datacards=("Datacards_100626_ge2bge1c_fix_clean_onlySurvivingVeto_simplified")
+declare -a datacards=("Datacards_250826_preUnblinding_noFlavTagSymm_simplified" "Datacards_250826_preUnblinding_nonSmoothed_simplified" "Datacards_250826_preUnblinding_simplified")
 
 
 
@@ -26,11 +27,11 @@ for datacard in ${datacards[@]}; do
     echo ${datacard}
     # echo submitAllFitJobs.py -i ${datacard}/datacards/workspace_*_*.root -o ${datacard}_All --output-eos /eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/ForANv1/FitStudies_${datacard}_All ${datacard}_All -v --observed
     # nohup python3 submitAllFitJobs.py -i ${datacard}/datacards/workspace_*_*.root -o ${datacard}_All --output-eos /eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/ForANv1/FitStudies_${datacard}_All -v --observed &
-    nohup python3 submitAllFitJobs.py -i ${datacard}/datacards/workspace_*_*.root -o ${datacard}_CR --output-eos /eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/ForANv1/FitStudies_${datacard}_CR -v --observed --CR --setParameters rgx{mask_.\*_SR.\*}=1 &
+    nohup python3 submitAllFitJobs.py -i ${datacard}/datacards/workspace_*_*.root -o ${datacard}_CR --output-eos /eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/preUnblinding/FitStudies_${datacard}_CR -v --observed --CR --setParameters rgx{mask_.\*_SR.\*}=1 &
     # nohup python3 submitAllFitJobs.py -i ${datacard}/datacards/workspace_*_*.root -o ${datacard}_CR --output-eos /eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/ForANv1/FitStudies_${datacard}_CR -v --observed --CR --setParameters rgx{mask_.\*_MidScoreVR.\*}=1,rgx{mask_.\*catHbb_SR.\*}=1,rgx{mask_.\*catHcc_SR.\*}=1,rgx{mask_.\*catZbb_SR.\*}=1,rgx{mask_.\*catZcc_SR.\*}=1 &
     # nohup python3 submitAllFitJobs.py -i ${datacard}/datacards/workspace_*_*.root -o ${datacard}_CRPlusTTZ --output-eos /eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/ForANv1/FitStudies_${datacard}_CRPlusTTZ -v --CRTTZ --observed --setParameters rgx{mask_.\*_MidScoreVR.\*}=1,rgx{mask_.\*catHbb_SR.\*}=1,rgx{mask_.\*catHcc_SR.\*}=1 &
     # nohup python3 submitAllFitJobs.py -i ${datacard}/datacards/workspace_*_*.root -o ${datacard}_CRPlusTTH --output-eos /eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/ForANv1/FitStudies_${datacard}_CRPlusTTH -v --CRTTH --observed --setParameters rgx{mask_.\*_MidScoreVR.\*}=1,rgx{mask_.\*catZbb_SR.\*}=1,rgx{mask_.\*catZcc_SR.\*}=1 &
-    nohup python3 submitAllFitJobs.py -i ${datacard}/datacards/workspace_*_*.root -o ${datacard}_SR --output-eos /eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/ForANv1/FitStudies_${datacard}_SR -v --observed &
+    nohup python3 submitAllFitJobs.py -i ${datacard}/datacards/workspace_*_*.root -o ${datacard}_SR --output-eos /eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/preUnblinding/FitStudies_${datacard}_SR -v --observed &
 
     # nohup python3 submitAllFitJobs.py -i ${datacard}/datacards/workspace_*_*.root -o ${datacard}_CRbb --output-eos /eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/ForANv1/FitStudies_${datacard}_CRbb -v --observed --CRbb --setParameters rgx{mask_.\*_SR.\*}=1,mask_Vcb_catBJ_CR=1,mask_Vcb_cat2B_CR=1,mask_Vcb_catCC_CR=1,mask_Vcb_catCJ_CR=1,mask_Vcb_cat2C_CR=1,mask_Vcb_catLF_CR=1 &
     # nohup python3 submitAllFitJobs.py -i ${datacard}/datacards/workspace_*_*.root -o ${datacard}_CRbj --output-eos /eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/ForANv1/FitStudies_${datacard}_CRbj -v --observed --CRbj --setParameters rgx{mask_.\*_SR.\*}=1,mask_Vcb_catBB_CR=1,mask_Vcb_cat2B_CR=1,mask_Vcb_catCC_CR=1,mask_Vcb_catCJ_CR=1,mask_Vcb_cat2C_CR=1,mask_Vcb_catLF_CR=1 &

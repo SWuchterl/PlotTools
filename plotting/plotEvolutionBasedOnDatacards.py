@@ -167,7 +167,8 @@ def main(doPrePostFitPlots = False, doEvolutionPlots = False, doImpactPlots = Fa
     # basePath = "/eos/cms/store/cmst3/user/sewuchte/ttHcc_ANv4/"
     # basePath = "/eos/cms/store/cmst3/group/vhcc/ttHcc_trees/HTC_results/ttHcc_ANv4/"
     # basePath = "/eos/cms/store/cmst3/group/vhcc/ttHcc_trees/HTC_results/ttHcc_ARCv1/"
-    basePath = "/eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/ForANv1/"
+    # basePath = "/eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/ForANv1/"
+    basePath = "/eos/cms/store/cmst3/group/top/Vcb_trees/HTC_results/preUnblinding/"
 
     style.defaultStyle()
     s = style.defaultStyle()
@@ -187,7 +188,11 @@ def main(doPrePostFitPlots = False, doEvolutionPlots = False, doImpactPlots = Fa
     # basename_ = "080526_ge2bge1c_fix_clean_pseudoData5FS"
     # basename_ = "100626_ge2bge1c_fix_clean_pseudoData5FS"
     # basename_ = "100626_ge2bge1c_fix_clean_forJME"
-    basename_ = "100626_ge2bge1c_fix_clean_onlySurvivingVeto"
+    # basename_ = "100626_ge2bge1c_fix_clean_onlySurvivingVeto"
+
+    basename_ = "250826_preUnblinding_noFlavTagSymm"
+    # basename_ = "250826_preUnblinding_nonSmoothed"
+    # basename_ = "250826_preUnblinding"
 
     # basename = "FitStudies_Datacards_280426_simplified_"
     # basename = "FitStudies_Datacards_280426_smoothed_simplified_"
@@ -213,15 +218,15 @@ def main(doPrePostFitPlots = False, doEvolutionPlots = False, doImpactPlots = Fa
         basename+"SR/",
         basename+"CR/",
         basename+"CR/",
-        basename+"CRbb/",
-        basename+"CRbj/",
-        basename+"CRcc/",
-        basename+"CRcj/",
-        basename+"CR2b/",
-        basename+"CR2c/",
-        basename+"CRlf/",
-        basename+"CRnolf/",
-        basename+"SRnolf/",
+        # basename+"CRbb/",
+        # basename+"CRbj/",
+        # basename+"CRcc/",
+        # basename+"CRcj/",
+        # basename+"CR2b/",
+        # basename+"CR2c/",
+        # basename+"CRlf/",
+        # basename+"CRnolf/",
+        # basename+"SRnolf/",
         # basename+"All/",
         # basename+"All/",
         # basename+"CRPlusTTZ/",
@@ -237,15 +242,15 @@ def main(doPrePostFitPlots = False, doEvolutionPlots = False, doImpactPlots = Fa
         "SR_obs/",
         "CR_exp/",
         "CR_obs/",
-        "CRbb_obs/",
-        "CRbj_obs/",
-        "CRcc_obs/",
-        "CRcj_obs/",
-        "CR2b_obs/",
-        "CR2c_obs/",
-        "CRlf_obs/",
-        "CRnolf_obs/",
-        "SRnolf_obs/",
+        # "CRbb_obs/",
+        # "CRbj_obs/",
+        # "CRcc_obs/",
+        # "CRcj_obs/",
+        # "CR2b_obs/",
+        # "CR2c_obs/",
+        # "CRlf_obs/",
+        # "CRnolf_obs/",
+        # "SRnolf_obs/",
         # "All_exp/",
         # "All_obs/",
         # "CRPlusTTZ_exp/",
@@ -255,7 +260,8 @@ def main(doPrePostFitPlots = False, doEvolutionPlots = False, doImpactPlots = Fa
     ]
 
     # outwebfolder = ""
-    outwebfolder = "/eos/home-s/sewuchte/www/Vcb/Apr26/"
+    # outwebfolder = "/eos/home-s/sewuchte/www/Vcb/Apr26/"
+    outwebfolder = "/eos/home-s/sewuchte/www/Vcb/Aug26/"
     outfolderlocal = "/afs/cern.ch/work/s/sewuchte/private/VCB/CMSSW_15_0_10/src/PlotTools/"
 
     # baseOutputFolder = outwebfolder+"BehaviorStudies_2026-04-28/"
