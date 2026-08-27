@@ -40,12 +40,15 @@ def main():
     p.add_argument("-n", "--nmax", type=int, default=40)
     p.add_argument("--asimov", action="store_true",
                    help="fit ran on Asimov/expected data: CMS label reads 'Simulation'")
-    p.add_argument("--redact-poi-value", action="store_true",
-                   help="suppress the numeric central value/uncertainty for --poi itself "
-                        "(its own self-row text, and the 'total' subtitle figure). "
-                        "Impacts of OTHER parameters on --poi are still shown in full -- "
-                        "this hides only the target POI's own value, e.g. for a blinded "
-                        "or not-yet-to-be-revealed measurement.")
+    p.add_argument("--redact", default=None, metavar="PARAM",
+                   help="hide PARAM's own fitted value everywhere it appears as a pull "
+                        "row in this plot -- not just when PARAM is --poi itself. A "
+                        "blinded free parameter can leak into ANOTHER poi's impact plot "
+                        "via correlation (it shows up as a pull row there too), so this "
+                        "must be passed for every --poi call, not only PARAM's own. "
+                        "Impacts BY other parameters remain shown in full; only PARAM's "
+                        "own printed value is hidden. If PARAM == --poi, the 'total' "
+                        "subtitle figure is hidden too.")
     args = p.parse_args()
 
     fitresult, meta = io_tools.get_fitresult(args.fitresult, result=args.result,
@@ -98,7 +101,7 @@ def main():
         a.errorbar(pulls[c], y[c], xerr=constraints[c], fmt="ko", ms=4.5, lw=1.4,
                    capsize=2, zorder=3)
         for i in np.where(free)[0]:
-            if args.redact_poi_value and labels[i] == args.poi:
+            if args.redact is not None and labels[i] == args.redact:
                 a.text(0, y[i], "hidden", ha="center", va="center", fontsize=9,
                       color="#888888", style="italic", zorder=4,
                       bbox=dict(fc="white", ec="none", pad=0.6))
@@ -137,9 +140,9 @@ def main():
     tag = args.postfix or os.path.splitext(os.path.basename(args.fitresult))[0]
     kindlabel = "Grouped" if args.grouped else "Ungrouped"
     subtitle = f"{tag}  --  {kindlabel} {args.impact_type} impacts on {args.poi}"
-    if np.isfinite(total) and not args.redact_poi_value:
+    if np.isfinite(total) and args.poi != args.redact:
         subtitle += f"   (total = {total:.4f})"
-    elif args.redact_poi_value:
+    elif np.isfinite(total):
         subtitle += "   (total = hidden)"
     # Fixed-height figure-frame header: hep.cms.label's axes-relative
     # placement either overlaps the top rows (loc=2) or, combined with a

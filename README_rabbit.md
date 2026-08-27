@@ -30,6 +30,29 @@ Cross-check against classic Combine on one datacard:
 ./validateCombineRabbit.sh <carddir> <outdir>
 ```
 
+## Pre-unblinding study: CR + SR, expected/observed, impacts, prepostfit, GoF
+
+One command reproduces everything for the orig-shapes / lowess / no-flavtag-mirror
+study -- 4 fits (CR_expected, CR_observed, SR_expected, SR_observed), prepostfit
+and impacts (8 POIs x traditional/global) for all 4, plus goodness-of-fit toys
+for the two observed configs:
+```
+cd GoFStudy_orig_noFTS_lowess && ./run_all.sh
+```
+Idempotent (every step checks its own output and skips if present) and safe to
+rerun after a crash or Ctrl-C. `JOBS=16 TOYS=5000 ./run_all.sh` overrides toy
+parallelism/count; the two observed configs' toy batches are the only real
+compute (~2-2.5h each at 16-way parallelism). Output: `plots/prepostfit/`,
+`plots/impacts/`, `plots/toyGoF_{CR,SR}_observed.png`.
+
+SR_observed genuinely unblinds tt-vcb in the fit (real answer, real postfit,
+real GoF) but the script never prints its value, its own impact-plot rows are
+redacted (`--redact tt-vcb`, needed for every POI, not only when tt-vcb is the
+one being plotted -- it is correlated with the tt+X norms and its pull can
+otherwise leak as text into another POI's impact plot), and its prepostfit
+plot keeps the SR data marker blinded by default (a second `_withSRdata` copy
+opts in explicitly via `--show-signal-data`).
+
 ## Defaults (lowess + flavTag mirror-up off)
 
 `analysis/prepareTensor.py` defaults to `--smoothing-method lowess` and keeps
@@ -55,9 +78,13 @@ rabbit_fit.py out/SR.hdf5 -o out --outname SR_fit -t -1 ${PM} \
 python3 analysis/rabbitPlotImpacts.py out/SR_fit.hdf5 --poi tt-vcb \
     -o out/plots --postfix SR --impact-type traditional
 ```
-Add `--redact-poi-value` to hide only `--poi`'s own central value/uncertainty
-(its self-row text and the "total" subtitle) while every other parameter's
-impact still shows in full -- for a fit whose POI is not to be revealed yet.
+Add `--redact tt-vcb` (or any parameter name) to hide that parameter's own
+central value/uncertainty everywhere it appears as a pull row in this plot --
+including when it merely correlates with `--poi` rather than being `--poi`
+itself -- while every other parameter's impact still shows in full. Pass it
+for every `--poi` call whenever a blinded parameter might leak by
+correlation, not only the calls where it is the plotted POI. If it equals
+`--poi`, the "total" subtitle is hidden too.
 
 **Pre/postfit stack** (SR data marker is blinded by default):
 ```
@@ -80,8 +107,8 @@ python3 ../analysis/plotToyGoF.py --npz rabbit/toyGoF_<name>_summary.npz \
 `expected` mode is the correct choice for an Asimov config (the toy mean IS
 the null hypothesis already). `observed` mode needs a postfit-conditioned
 tensor first (Poisson-fluctuating around raw `data_obs` double-counts noise,
-verified: inflates the toy mean ~2x) -- see the compact_toys.py-adjacent
-postfit-mean construction in `run_bulk.sh`/`run_sr_observed.sh` for the recipe.
+verified: inflates the toy mean ~2x) -- see `run_all.sh`'s
+`patch_postfit_mean` step for the recipe.
 GoF itself (`nllvalreduced`/`ndfsat`) needs no extra flags, always computed.
 
 ## Layout
