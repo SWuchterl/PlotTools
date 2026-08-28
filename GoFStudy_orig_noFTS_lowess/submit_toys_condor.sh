@@ -87,6 +87,11 @@ cat > "${EXE}" <<EOF
 set -e
 SCRATCH=\$(pwd)
 K=\$1
+# Python scans ~/.local/lib/pythonX.Y/site-packages (AFS HOME, unrelated to
+# rabbit_env or CMSSW) on every import unless told not to; a real job hit a
+# transient AFS timeout reading it. Not part of the intended environment
+# anyway -- skip it outright rather than depend on that mount's uptime.
+export PYTHONNOUSERSITE=1
 # getenv=True inherits RABBIT_ACTIVE=1 from the submitting shell if it had
 # rabbit_env active; setup_rabbit.sh then short-circuits ("already active")
 # and skips re-sourcing rabbit_env/bin/activate -- but the scramv1 runtime
