@@ -17,6 +17,10 @@ BestOrder_raw/
 *_report.json
 *_summary.npz
 
+# HTCondor submission artifacts (submit_toys_condor.sh output: generated
+# executable/submit file + per-job stdout/stderr/log, not source)
+condor_*/
+
 # python
 __pycache__/
 *.pyc

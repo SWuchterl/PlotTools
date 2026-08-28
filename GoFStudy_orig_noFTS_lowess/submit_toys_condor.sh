@@ -86,8 +86,14 @@ cat > "${EXE}" <<EOF
 set -e
 SCRATCH=\$(pwd)
 K=\$1
+# getenv=True inherits RABBIT_ACTIVE=1 from the submitting shell if it had
+# rabbit_env active; setup_rabbit.sh then short-circuits ("already active")
+# and skips re-sourcing rabbit_env/bin/activate -- but the scramv1 runtime
+# eval just below resets PATH first, dropping the venv's bin/ prefix that
+# inheritance carried over. Force a real activation on this machine instead.
+unset RABBIT_ACTIVE VIRTUAL_ENV
 cd ${CMSSW_SRC} && eval \`scramv1 runtime -sh\`
-cd ${PT} && source setup.sh > /dev/null 2>&1 && source setup_rabbit.sh > /dev/null 2>&1
+cd ${PT} && source setup.sh && source setup_rabbit.sh
 cd "\${SCRATCH}"
 N=toyGoF_${NAME}_batch\${K}
 rabbit_fit.py ${TENSOR_ABS} -o . --outname \${N} \\
@@ -113,7 +119,9 @@ initialdir              = ${BASE}/${O}
 output                  = ${CONDOR_DIR}/job.out.\$(Cluster).\$(Process)
 error                   = ${CONDOR_DIR}/job.err.\$(Cluster).\$(Process)
 log                     = ${CONDOR_DIR}/job.log.\$(Cluster)
-+MaxRuntime             = 21600
+# Local per-toy cost measured ~20-25s; a first real worker test measured
+# noticeably slower steady-state throughput. Generous margin, cheap to give.
++MaxRuntime             = 43200
 RequestCpus             = 1
 queue ${JOBS}
 EOF
