@@ -51,7 +51,7 @@ cd GoFStudy_orig_noFTS_lowess
 ./submit_toys_condor.sh SR_observed rabbit/ourSR_postfitmean.hdf5 observed \
     "--unblind tt-vcb xsec_.*"
 
-condor_q -batch                    # watch the two clusters drain (~1-1.5h each)
+condor_q -batch                    # watch the two clusters drain (short jobs, high parallelism)
 
 ./submit_toys_condor.sh --collect CR_observed
 ./submit_toys_condor.sh --collect SR_observed
@@ -62,11 +62,11 @@ python3 ../analysis/plotToyGoF.py --npz rabbit/toyGoF_SR_observed_summary.npz \
     --observed rabbit/SR_observed.hdf5 -o plots/toyGoF_SR_observed.png --label "Lepton + jets"
 ```
 
-`TOYS=50000 JOBS=250 ./submit_toys_condor.sh ...` are the defaults (250 jobs
-x 200 toys, ~85 min/job at ~25s/toy, `+MaxRuntime = 21600` = 6h cap -- edit
-the script's settings block for a different split). Never pass
-`--paramModel` in the `<extra flags>` string: the script already adds it,
-doubling it crashes the fitter with `Duplicate parameter names`.
+`TOYS=50000 JOBS=1500 ./submit_toys_condor.sh ...` are the defaults (1500
+jobs x 34 toys, short and numerous rather than few and long, `+MaxRuntime =
+7200` = 2h cap -- edit the script's settings block for a different split).
+Never pass `--paramModel` in the `<extra flags>` string: the script already
+adds it, doubling it crashes the fitter with `Duplicate parameter names`.
 
 Each Condor job compacts its own toy batch (`nllvalreduced`/`ndfsat` only,
 ~KB) on the **worker's own local scratch** and transfers back only that tiny

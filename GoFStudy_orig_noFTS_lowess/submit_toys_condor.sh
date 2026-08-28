@@ -25,9 +25,10 @@
 # sizes) never touches AFS at all. See run_gof_toys_lean.sh's header for the
 # AFS-quota crash this design avoids.
 #
-# TOYS=50000 JOBS=250 ./submit_toys_condor.sh <name> <tensor> <mode> <extra>
-# -> 250 condor jobs x 200 toys each, ~85 min/job at ~25s/toy (6h runtime cap,
-# edit +MaxRuntime below if a slower fit needs more headroom).
+# TOYS=50000 JOBS=1500 ./submit_toys_condor.sh <name> <tensor> <mode> <extra>
+# -> 1500 condor jobs x 34 toys each, short and numerous rather than few and
+# long (~15-25 min/job at ~25-40s/toy incl. one-time TF compile), 2h runtime
+# cap -- edit +MaxRuntime below if a slower fit needs more headroom.
 
 set -e
 BASE=$(cd "$(dirname "$0")" && pwd)
@@ -68,7 +69,7 @@ if [ -z "${NAME}" ] || [ -z "${TENSOR}" ] || [ -z "${MODE}" ]; then
 fi
 
 TOYS=${TOYS:-50000}
-JOBS=${JOBS:-250}
+JOBS=${JOBS:-1500}
 TOYS_PER_JOB=$(( (TOYS + JOBS - 1) / JOBS ))
 SEED_BASE=${SEED_BASE:-70000}
 
@@ -119,9 +120,9 @@ initialdir              = ${BASE}/${O}
 output                  = ${CONDOR_DIR}/job.out.\$(Cluster).\$(Process)
 error                   = ${CONDOR_DIR}/job.err.\$(Cluster).\$(Process)
 log                     = ${CONDOR_DIR}/job.log.\$(Cluster)
-# Local per-toy cost measured ~20-25s; a first real worker test measured
-# noticeably slower steady-state throughput. Generous margin, cheap to give.
-+MaxRuntime             = 43200
+# Local per-toy cost measured ~20-25s; jobs are short and numerous (see
+# JOBS default above), 2h is generous margin without over-claiming a slot.
++MaxRuntime             = 7200
 RequestCpus             = 1
 queue ${JOBS}
 EOF
